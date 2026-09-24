@@ -512,8 +512,60 @@ function wallHit(from, dir, len, heights) {
 const HOUSE_C = new THREE.Vector3(meta.house[0], 0, meta.house[2]);
 const insideHouse = (p) => Math.abs(p.x - 8) < 9 && Math.abs(p.z + 10.5) < 4.5 && p.y > 0.5;
 
-// ================================================================ audio (all synthesized; starts on the first click)
-let AC = null, master, reverbIn;
+// ================================================================ audio: recorded samples from assets/sfx/, synth fallback
+// The manifest maps a slot ('rex.roar') to layers played together; each layer picks one of its files at random.
+// A slot with no files falls back to the synthesized sound below it. See assets/sfx/README.md.
+const SFX_V = 'v1';
+const SLOTS = {                        // per-slot defaults: gain, pitch jitter, reverb send when played at the ear
+  'rifle.shot': { gain: 1, jit: 0.04, wet: 0.5 }, 'rifle.mech': { gain: 0.3, jit: 0.05 }, 'rifle.tail': { gain: 0.7, jit: 0.05, wet: 0.3 },
+  'rifle.dry': { gain: 0.6 }, 'rifle.magout': { gain: 0.6 }, 'rifle.magin': { gain: 0.7 }, 'rifle.bolt': { gain: 0.7 },
+  'hit.body': { gain: 0.5, jit: 0.08 }, 'hit.head': { gain: 0.6, jit: 0.05 },
+  'player.hurt': { gain: 0.9, jit: 0.08 }, 'player.heart': { gain: 0.8, jit: 0 },
+  'raptor.chirp': { gain: 0.8, jit: 0.12 }, 'raptor.screech': { gain: 1, jit: 0.08 }, 'raptor.bite': { gain: 0.9, jit: 0.1 }, 'raptor.death': { gain: 1, jit: 0.08 },
+  'rex.growl': { gain: 1, jit: 0.06 }, 'rex.roar': { gain: 1.3, jit: 0.05 }, 'rex.step': { gain: 1.1, jit: 0.1 }, 'rex.bite': { gain: 1.1, jit: 0.06 }, 'rex.death': { gain: 1.3, jit: 0.05 },
+  'body.fall': { gain: 0.9, jit: 0.1 },
+  'amb.forest': { gain: 0.5, loop: true }, 'amb.stream': { gain: 0.8, loop: true },
+};
+// fetch the files now, decode once the AudioContext exists (first click)
+const sfxFiles = fetch(`assets/sfx/sfx_${SFX_V}.json`).then((r) => (r.ok ? r.json() : {})).catch(() => ({})).then((man) =>
+  Promise.all(Object.entries(man).filter(([k]) => SLOTS[k]).map(async ([slot, spec]) => {
+    const layers = (spec.length && typeof spec[0] === 'string' ? [{ files: spec }] : spec).filter((L) => L.files && L.files.length);
+    for (const L of layers) L.raw = (await Promise.all(L.files.map((f) => fetch('assets/sfx/' + f)
+      .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(r.status))).catch((e) => console.warn('sfx: missing', f, e))))).filter(Boolean);
+    return [slot, layers.filter((L) => L.raw.length)];
+  })));
+const BANK = {};                       // slot -> [{ bufs, gain, rate: [lo, hi], delay, last }]
+async function sfxDecode() {
+  for (const [slot, layers] of await sfxFiles) {
+    const out = [];
+    for (const L of layers) {
+      const bufs = (await Promise.all(L.raw.map((a) => AC.decodeAudioData(a).catch(() => null)))).filter(Boolean);
+      const j = SLOTS[slot].jit ?? 0.03;
+      if (bufs.length) out.push({ bufs, gain: L.gain ?? 1, rate: L.rate || [1 - j, 1 + j], delay: L.delay || 0, last: -1 });
+    }
+    if (out.length) BANK[slot] = out;
+  }
+  ambience();
+}
+// play a slot; false if it has no samples (so the caller can synthesize instead)
+function sample(slot, pos, o = {}) {
+  const layers = AC && BANK[slot]; if (!layers) return false;
+  const S = SLOTS[slot], t = AC.currentTime + (o.delay || 0), out = pos ? panner(pos) : master;
+  let wet = null;
+  if (!pos && S.wet) { wet = AC.createGain(); wet.gain.value = S.wet; wet.connect(reverbIn); }
+  for (const L of layers) {
+    let i = Math.floor(Math.random() * L.bufs.length);
+    if (L.bufs.length > 1 && i === L.last) i = (i + 1) % L.bufs.length;   // never the same take twice running
+    L.last = i;
+    const s = AC.createBufferSource(); s.buffer = L.bufs[i];
+    s.playbackRate.value = rand(L.rate[0], L.rate[1]) * (o.rate || 1);
+    const g = AC.createGain(); g.gain.value = S.gain * L.gain * (o.gain ?? 1) * rand(0.88, 1);
+    s.connect(g).connect(out); if (wet) g.connect(wet);
+    s.start(t + L.delay);
+  }
+  return true;
+}
+let AC = null, master, reverbIn, ambSynth = null;
 const noiseBuf = (sec, brown) => {
   const b = AC.createBuffer(1, AC.sampleRate * sec, AC.sampleRate), d = b.getChannelData(0);
   let last = 0;
@@ -530,36 +582,56 @@ function audioInit() {
   const conv = AC.createConvolver(), ir = AC.createBuffer(2, AC.sampleRate * 2.2, AC.sampleRate);
   for (let c = 0; c < 2; c++) { const d = ir.getChannelData(c); for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 3); }
   conv.buffer = ir; reverbIn = AC.createGain(); reverbIn.gain.value = 0.35; reverbIn.connect(conv); conv.connect(master);
-  // ambience: wind through leaves, and the stream
+  // ambience: wind through leaves, and the stream (streamGain is 0..1 by how near the water you are)
   const amb = AC.createBufferSource(); amb.buffer = BROWN; amb.loop = true;
   const lp = AC.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 500;
   const ag = AC.createGain(); ag.gain.value = 0.12; amb.connect(lp).connect(ag).connect(master); amb.start();
   const st = AC.createBufferSource(); st.buffer = NOISE; st.loop = true;
   const bp = AC.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1800; bp.Q.value = 0.6;
-  streamGain = AC.createGain(); streamGain.gain.value = 0; st.connect(bp).connect(streamGain).connect(master); st.start();
+  streamGain = AC.createGain(); streamGain.gain.value = 0; streamGain.connect(master);
+  const sl = AC.createGain(); sl.gain.value = 0.05; st.connect(bp).connect(sl).connect(streamGain); st.start();
+  ambSynth = { amb, st };
+  sfxDecode();
 }
 let streamGain = null;
+// recorded loops replace the synthesized wind and stream once they decode
+function ambience() {
+  const loop = (slot, to, synth) => {
+    const L = BANK[slot]?.[0]; if (!L) return;
+    const s = AC.createBufferSource(); s.buffer = L.bufs[0]; s.loop = true;
+    const g = AC.createGain(); g.gain.value = SLOTS[slot].gain * L.gain; s.connect(g).connect(to);
+    s.start(AC.currentTime, Math.random() * s.buffer.duration); synth.stop();
+  };
+  loop('amb.forest', master, ambSynth.amb); loop('amb.stream', streamGain, ambSynth.st);
+}
 function env(g, t0, a, peak, d) { g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(peak, t0 + a); g.gain.exponentialRampToValueAtTime(0.0001, t0 + a + d); }
+// a sound out in the world: 3D placed, and the further off, the more the mist muffles it and the more of it is echo
 function panner(pos) {
   const p = AC.createPanner(); p.panningModel = 'HRTF'; p.distanceModel = 'inverse'; p.refDistance = 4; p.rolloffFactor = 1.2;
-  p.positionX.value = pos.x; p.positionY.value = pos.y; p.positionZ.value = pos.z; p.connect(master); p.connect(reverbIn); return p;
+  p.positionX.value = pos.x; p.positionY.value = pos.y; p.positionZ.value = pos.z;
+  const d = pos.distanceTo(camera.position);
+  const lp = AC.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = clamp(20000 * Math.exp(-d / 20), 600, 20000); lp.Q.value = 0.5;
+  const wet = AC.createGain(); wet.gain.value = clamp(0.5 + d / 30, 0.5, 2.2);
+  lp.connect(p); p.connect(master); p.connect(wet).connect(reverbIn); return lp;
 }
 function sGun() {
-  if (!AC) return; const t = AC.currentTime;
+  if (!AC) return;
+  if (sample('rifle.shot')) { sample('rifle.mech'); sample('rifle.tail', null, { delay: 0.03 }); return; }
+  const t = AC.currentTime;
   const n = AC.createBufferSource(); n.buffer = NOISE; n.playbackRate.value = rand(0.9, 1.1);
   const f = AC.createBiquadFilter(); f.type = 'lowpass'; f.frequency.setValueAtTime(6000, t); f.frequency.exponentialRampToValueAtTime(400, t + 0.18);
   const g = AC.createGain(); env(g, t, 0.002, 0.9, 0.2); n.connect(f).connect(g); g.connect(master); g.connect(reverbIn); n.start(t, rand(0, 1), 0.3);
   const o = AC.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(140, t); o.frequency.exponentialRampToValueAtTime(40, t + 0.12);
   const og = AC.createGain(); env(og, t, 0.002, 0.8, 0.14); o.connect(og).connect(master); o.start(t); o.stop(t + 0.2);
 }
-function sClick(delay = 0, pitch = 1) {
-  if (!AC) return; const t = AC.currentTime + delay;
+function sClick(delay = 0, pitch = 1, slot) {
+  if (!AC || sample(slot, null, { delay })) return; const t = AC.currentTime + delay;
   const n = AC.createBufferSource(); n.buffer = NOISE; n.playbackRate.value = pitch;
   const f = AC.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 2500;
   const g = AC.createGain(); env(g, t, 0.001, 0.35, 0.04); n.connect(f).connect(g).connect(master); n.start(t, rand(0, 1), 0.06);
 }
 function sRoar(pos, big) {
-  if (!AC) return; const t = AC.currentTime, dur = big ? 2.2 : 1.1, out = panner(pos);
+  if (!AC || sample(big ? 'rex.roar' : 'raptor.screech', pos)) return; const t = AC.currentTime, dur = big ? 2.2 : 1.1, out = panner(pos);
   const sh = AC.createWaveShaper(), curve = new Float32Array(512);
   for (let i = 0; i < 512; i++) { const x = i / 256 - 1; curve[i] = Math.tanh(x * 4); }
   sh.curve = curve;
@@ -581,7 +653,7 @@ function sRoar(pos, big) {
   n.connect(bp).connect(ng).connect(sh); n.start(t, rand(0, 1), dur + 0.3);
 }
 function sChirp(pos) {
-  if (!AC) return; const t = AC.currentTime, out = panner(pos);
+  if (!AC || sample('raptor.chirp', pos)) return; const t = AC.currentTime, out = panner(pos);
   for (let k = 0; k < 2; k++) {
     const o = AC.createOscillator(); o.type = 'square'; const t0 = t + k * 0.16;
     o.frequency.setValueAtTime(rand(900, 1200), t0); o.frequency.exponentialRampToValueAtTime(rand(380, 480), t0 + 0.13);
@@ -595,24 +667,29 @@ function sThud(pos, gain = 0.6) {
   const g = AC.createGain(); env(g, t, 0.005, gain, 0.3); o.connect(g).connect(out); o.start(t); o.stop(t + 0.4);
 }
 function sHurt() {
-  if (!AC) return; const t = AC.currentTime;
+  if (!AC || sample('player.hurt')) return; const t = AC.currentTime;
   const o = AC.createOscillator(); o.type = 'triangle'; o.frequency.setValueAtTime(90, t); o.frequency.exponentialRampToValueAtTime(45, t + 0.2);
   const g = AC.createGain(); env(g, t, 0.005, 0.9, 0.25); o.connect(g).connect(master); o.start(t); o.stop(t + 0.3);
   const n = AC.createBufferSource(); n.buffer = NOISE; const f = AC.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 900;
   const ng = AC.createGain(); env(ng, t, 0.003, 0.5, 0.15); n.connect(f).connect(ng).connect(master); n.start(t, rand(0, 1), 0.2);
 }
 function sBeat() {
-  if (!AC) return; const t = AC.currentTime;
+  if (!AC || sample('player.heart')) return; const t = AC.currentTime;
   for (const [dt, a] of [[0, 0.7], [0.18, 0.45]]) {
     const o = AC.createOscillator(); o.frequency.value = 48; const g = AC.createGain(); env(g, t + dt, 0.01, a, 0.16);
     o.connect(g).connect(master); o.start(t + dt); o.stop(t + dt + 0.25);
   }
 }
 function sHit(head) {
-  if (!AC) return; const t = AC.currentTime;
+  if (!AC || sample(head ? 'hit.head' : 'hit.body')) return; const t = AC.currentTime;
   const o = AC.createOscillator(); o.type = 'square'; o.frequency.value = head ? 1800 : 1200;
   const g = AC.createGain(); env(g, t, 0.001, 0.12, 0.05); o.connect(g).connect(master); o.start(t); o.stop(t + 0.08);
 }
+
+// sounds that only exist as samples, or fall back to a synthesized cousin
+function sFall(p, a) { sample('body.fall', p, { gain: a, rate: a >= 1 ? 0.75 : 1 }) || sThud(p, a); }
+function sGrowl(p) { sample('rex.growl', p) || sRoar(p, true); }
+function sStep(p) { sample('rex.step', p) || sThud(p, 0.9); }
 
 // ================================================================ effects: particles, tracers, muzzle flash
 const P_MAX = 700;
@@ -790,7 +867,8 @@ class Dino {
     this.alive = false; this.state = 'dead'; this.t = 0;
     this.play('Death', 0.12);
     game.kills++; game.score += this.K.score;
-    sThud(this.pos, this.kind === 'rex' ? 1.0 : 0.5);
+    sample(`${this.kind}.death`, this.headPos());
+    sFall(this.pos, this.kind === 'rex' ? 1.0 : 0.5);
   }
   update(dt) {
     this.mixer.update(dt);
@@ -805,7 +883,7 @@ class Dino {
     to.normalize();
     // growls and chirps from the mist while it hunts
     this.growlT -= dt;
-    if (this.growlT < 0 && dist < 45) { this.growlT = rand(3, 7); this.kind === 'rex' ? sRoar(this.headPos(), true) : sChirp(this.headPos()); }
+    if (this.growlT < 0 && dist < 45) { this.growlT = rand(3, 7); this.kind === 'rex' ? sGrowl(this.headPos()) : sChirp(this.headPos()); }
     let want = 0, target = to.clone();
     if (this.state === 'stalk') {
       want = K.stalk;
@@ -827,7 +905,7 @@ class Dino {
       want = dist > K.reach * 0.7 ? 1.5 : 0;
       const dur = this.acts.Attack.getClip().duration;
       if (!this.hitDone && this.t > dur * 0.5) {
-        this.hitDone = true;
+        this.hitDone = true; sample(`${this.kind}.bite`, this.headPos());
         if (dist < K.reach * 1.3 && player.alive) player.hurt(K.dmg * (0.8 + Math.random() * 0.4), this.pos);
       }
       if (this.t > dur) { this.state = 'charge'; this.play('Run', 0.15); }
@@ -886,7 +964,7 @@ class Dino {
     // rex footfalls you can feel
     if (this.kind === 'rex' && this.speed > 1) {
       this.stepT -= dt * this.speed / 7 * 2.2;
-      if (this.stepT < 0) { this.stepT = 1; sThud(this.pos, 0.9); if (dist < 25) game.shake = Math.max(game.shake, 0.25 * (1 - dist / 25)); }
+      if (this.stepT < 0) { this.stepT = 1; sStep(this.pos); if (dist < 25) game.shake = Math.max(game.shake, 0.25 * (1 - dist / 25)); }
     }
   }
   headPos() { const h = this.caps.find((c) => c.head); this.updateCaps(); return h.wb.clone(); }
@@ -958,11 +1036,11 @@ const MAG = 30, RPM = 540;
 function reload() {
   if (player.reloading > 0 || player.ammo === MAG) return;
   player.reloading = 1.6; player.racked = false; $('hReload').hidden = false;
-  sClick(0, 0.8); sClick(0.6, 1.2); sClick(1.3, 1);
+  sClick(0, 0.8, 'rifle.magout'); sClick(0.6, 1.2, 'rifle.magin'); if (!BANK['rifle.bolt']) sClick(1.3, 1);
 }
 function fire() {
   if (player.reloading > 0 || player.cool > 0 || !player.alive) return;
-  if (player.ammo <= 0) { sClick(0, 1.6); player.cool = 0.25; reload(); return; }
+  if (player.ammo <= 0) { sClick(0, 1.6, 'rifle.dry'); player.cool = 0.25; reload(); return; }
   player.ammo--; player.cool = 60 / RPM;
   sGun();
   flash.intensity = 30; flashSprite.material.opacity = 1; flashSprite.material.rotation = Math.random() * 6.28;
@@ -1258,7 +1336,7 @@ function update(dt) {
     magNode.position.set(magRest.x, magRest.y - 0.26 * out, magRest.z + 0.03 * out);
     magNode.visible = !(u > 0.34 && u < 0.5);
     boltNode.position.set(boltRest.x, boltRest.y, boltRest.z + 0.065 * (seg(0.78, 0.88) - seg(0.9, 0.95)));
-    if (player.reloading > 0 && !player.racked && u > 0.9) { player.racked = true; sClick(0, 0.7); }
+    if (player.reloading > 0 && !player.racked && u > 0.9) { player.racked = true; sClick(0, 0.7, 'rifle.bolt'); }
     flash.intensity *= Math.exp(-dt * 40);
     flashSprite.material.opacity *= Math.exp(-dt * 45);
     // --- health regen after a quiet spell
@@ -1287,7 +1365,7 @@ function update(dt) {
       L.forwardX.value = f.x; L.forwardY.value = f.y; L.forwardZ.value = f.z; L.upX.value = 0; L.upY.value = 1; L.upZ.value = 0; }
     if (streamGain) {
       const sd = Math.abs(camera.position.z - (-5.5 * Math.sin(camera.position.x / 26) + 1.5 * Math.sin(camera.position.x / 9 + 0.7)));
-      streamGain.gain.value = 0.05 * clamp(1 - sd / 18, 0, 1);
+      streamGain.gain.value = clamp(1 - sd / 18, 0, 1);
     }
     game.beatT -= dt;
     if (player.alive && player.hp < 40 && game.beatT < 0) { sBeat(); game.beatT = 0.55 + player.hp / 80; }
@@ -1340,6 +1418,9 @@ window.game = {
   preset() { nextPreset(); pBlend = 1; applyPreset(1); return PRESETS[pi].name; },
   aim(on) { aiming = on; },
   reload() { reload(); },
+  hear(slot, dist = 0) { audioInit(); AC.resume(); const p = dist ? camera.position.clone().add(new THREE.Vector3(0, 0, -dist).applyQuaternion(camera.quaternion)) : null;
+    return sample(slot, p) ? 'sample' : 'no sample (synth fallback where there is one)'; },
+  sfx() { return Object.fromEntries(Object.keys(SLOTS).map((k) => [k, BANK[k] ? BANK[k].map((L) => L.bufs.length).join('+') : 0])); },
   async snap(name) { renderer.setSize(1280, 720, false); composer.setSize(1280, 720); camera.aspect = 16 / 9; camera.updateProjectionMatrix();
     composer.render(); const b = await new Promise((r) => renderer.domElement.toBlob(r));
     await fetch('/shot/' + name + '.png', { method: 'POST', body: b }); return name; },

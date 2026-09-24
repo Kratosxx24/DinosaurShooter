@@ -31,6 +31,13 @@ Cloudflare cache by URL. `BLENDER` env var overrides the blender.exe path.
 | `world_v2.glb`, `plants_v2.glb`, `instances_v2.json` | `blender/tools/export_world.py` (builds `blender/world/forest_house.py --game`; plants from `world/_flora.py`); loaded via `WORLD_V`. The `Water` sheet covers the channel only: UVMap = metres along/across the flow, 2nd UV set x = depth to the bed, read by the water shader in index.html |
 | `tex/*.jpg` | Poly Haven CC0: forest_leaves_02, bark_brown_02, mossy_rock, concrete_wall_003, wood_floor_deck |
 
+## Sound
+Recorded samples in `assets/sfx/`, built by `tools/sfx_build.py` (cuts of CC0 Freesound previews, one `RECIPE` line each), listed per slot (`rex.roar`, `rifle.shot`, ...) in `assets/sfx/sfx_v1.json`
+(loaded via `SFX_V`; slot defaults in `SLOTS` in index.html). Slots can layer several files with pitch ranges.
+An empty slot falls back to the synthesized sound. `game.hear(slot, dist)` auditions one, `game.sfx()` lists what
+loaded. Format, slot table, sources and the credits table: `assets/sfx/README.md`. Never overwrite a sound file
+in place (cached immutable): new name, and bump the manifest version if it changed after shipping.
+
 Generator conventions: parameters as constants at the top, seeded randomness, each builds into its own
 collection, forward = Blender -Y (Three.js +Z) for creatures, barrel along +Y for the rifle (camera -Z).
 Never touch the user's live Blender session from here; `build.py` always spawns a background Blender.

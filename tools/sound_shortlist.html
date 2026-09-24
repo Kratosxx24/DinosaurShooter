@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mist Hunt Sound Shortlist</title>
+<style>
+:root { --bg: #f4f1ea; --card: #fbf9f4; --ink: #2b2a26; --mute: #6f6a5e; --line: #ddd6c8; --accent: #6b7f4e; --pick: #e6ecd9; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #1d1c19; --card: #26241f; --ink: #ebe6da; --mute: #a39d8e; --line: #3a372f; --accent: #a9c27a; --pick: #2f3827; } }
+:root[data-theme="dark"] { --bg: #1d1c19; --card: #26241f; --ink: #ebe6da; --mute: #a39d8e; --line: #3a372f; --accent: #a9c27a; --pick: #2f3827; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width: 980px; margin: 0 auto; padding: 24px 16px 120px; }
+h1 { font-size: 24px; margin: 0 0 4px; }
+.lede { color: var(--mute); margin: 0 0 20px; }
+nav { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 20px; }
+nav a { color: var(--accent); text-decoration: none; border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; font-size: 13px; }
+h2 { font-size: 17px; margin: 28px 0 2px; font-family: ui-monospace, Consolas, monospace; }
+.when { color: var(--mute); margin: 0 0 8px; font-size: 14px; }
+.row { display: grid; grid-template-columns: auto 1fr; gap: 10px 12px; align-items: center; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin: 6px 0; }
+.row.on { background: var(--pick); border-color: var(--accent); }
+.row input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--accent); }
+.t { font-weight: 600; }
+.t a { color: inherit; }
+.meta { color: var(--mute); font-size: 13px; }
+.note { font-size: 14px; }
+.ctl { grid-column: 2; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+audio { height: 32px; width: min(360px, 100%); }
+select { background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 3px; }
+.tag { font-size: 12px; border-radius: 4px; padding: 1px 6px; background: var(--line); color: var(--ink); margin-left: 6px; font-weight: 500; }
+footer { position: fixed; left: 0; right: 0; bottom: 0; background: var(--card); border-top: 1px solid var(--line); padding: 10px 16px; display: flex; gap: 10px; align-items: center; justify-content: center; flex-wrap: wrap; }
+button { background: var(--accent); color: var(--bg); border: 0; border-radius: 8px; padding: 8px 14px; font-weight: 600; cursor: pointer; }
+#count { color: var(--mute); }
+textarea { width: 100%; height: 160px; margin-top: 16px; background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; font: 12px ui-monospace, Consolas, monospace; }
+</style>
+</head>
+<body>
+<main>
+<h1>Mist Hunt Sound Shortlist</h1>
+<p class="lede">Every sound here is CC0 on Freesound (checked on each page). Play them, use the speed box to hear them pitched the way the game would play them, and tick what you like. Ticking several in one slot is good: they become random variants, or layers for the dinosaurs. Then hit Copy Picks and paste it back to me.</p>
+<nav id="nav"></nav>
+<div id="list"></div>
+<textarea id="out" hidden readonly></textarea>
+</main>
+<footer><span id="count">0 picked</span><button id="copy">Copy Picks</button></footer>
+<script>
+// [slot, when it plays, [[id, title, author, seconds, hq preview url, note, suggested rate, tag]]]
+const P = (id, u) => `https://cdn.freesound.org/previews/${Math.floor(id / 1000)}/${id}_${u}-hq.mp3`;
+const S = [
+ ['rifle.shot', 'Every shot you fire', [
+  [427596, 'AR15 rifle shot', 'michorvath', 2.6, P(427596, 3094998), 'Plain real AR-15 single shot; pairs with the 50-yard version in rifle.tail.', 1],
+  [854231, 'M4A1 Rifle Shot 10', 'qubodup', 0.6, P(854231, 71257), 'Short single M4 shot from range footage, already tight.', 1],
+  [854181, 'Rifle Gunfire Shot', 'qubodup', 2.7, P(854181, 71257), 'Several M4 shots layered into one.', 1],
+  [46655, 'carbine single', 'cognito perceptu', 3.3, P(46655, 57789), 'Real M1 carbine in woods over a stream: natural forest tail, less punch.', 1],
+  [515322, 'Ar15 (trimmed)', 'SuperPhat', 0.7, P(515322, 11324935), 'Processed, kick-drum layered: more "game gun".', 1],
+  [49513, '405Win', 'Jon285', 2.5, P(49513, 282197), 'Big-game rifle, "a nice, loud report".', 1],
+ ]],
+ ['rifle.mech', 'With your shot: the action cycling', [
+  [153560, 'Winchester Rifle Cock Reload', 'SpliceSound', 0.7, P(153560, 1480854), 'Short, clean .22 action.', 1],
+  [204204, '22 Bolt', 'Danwardvs', 1.3, P(204204, 3310361), '.22 bolt cycled, denoised; may be thin.', 1],
+  [802673, 'Mauser 98k bolt-action', 'Walking.With.Microphones', 2.1, P(802673, 4835746), 'High quality, but a full, heavier bolt cycle.', 1],
+ ]],
+ ['rifle.tail', 'With every shot: the echo rolling through the forest', [
+  [734096, 'Forest Impulse Response Gunshot Tail', 'modusmogulus', 4.6, P(734096, 15956618), 'A forest tail: exactly this slot.', 1],
+  [427597, 'AR15 rifle shot from 50 yards away', 'michorvath', 3.9, P(427597, 3094998), 'Same rifle as the first shot pick.', 1],
+  [734093, 'Gunshot 500m Pine Forest', 'modusmogulus', 3.0, P(734093, 15956618), 'Distant blast in a pine forest.', 1],
+  [410552, 'Rifle kaliber 6.5-55', 'straget', 5.0, P(410552, 7707368), 'Real rifle in a forest, mics ~15 m off.', 1],
+  [541164, 'Distant Gunshot', 'Resaural', 3.3, P(541164, 9662992), 'Chance capture, denoised.', 1],
+ ]],
+ ['rifle.dry', 'Pulling the trigger on an empty mag', [
+  [151068, 'Beretta M9 hammer click', 'vabadus', 0.2, P(151068, 2732486), 'Real dry fire, a little echo.', 1],
+  [107806, 'metallicclick', 'j1987', 0.1, P(107806, 367313), 'Tight click.', 1],
+  [171211, 'Dry Fire', 'brianhanson2nd', 3.1, P(171211, 1769769), 'S&W 9mm; needs trimming.', 1],
+ ]],
+ ['rifle.magout', 'Reload, start: mag out', [
+  [263513, 'AR15 Various Sounds', 'wadaltmon', 4.9, P(263513, 4675419), 'Real AR-15: mag out and inserts, several takes (covers both slots; I trim).', 1],
+  [104407, 'Mag remove', 'Nanashi', 0.9, P(104407, 61794), '1911 pistol mag, no background noise; lighter than a rifle.', 1],
+  [393732, 'AR15 M4 Magazine Movement Sounds', 'jackthemurray', 20.6, P(393732, 5618682), '20 s of AR mag handling to mine.', 1],
+ ]],
+ ['rifle.magin', 'Reload, 0.6 s: mag in', [
+  [379977, 'Inserting Magazine', 'morganpurkis', 0.7, P(379977, 5937039), 'Short, ready to use.', 1],
+  [171209, 'Magazine Insert', 'brianhanson2nd', 2.3, P(171209, 1769769), 'S&W 9mm insert.', 1],
+  [263513, 'AR15 Various Sounds (insert takes)', 'wadaltmon', 4.9, P(263513, 4675419), 'Same file as mag out.', 1],
+ ]],
+ ['rifle.bolt', 'End of reload: charging handle', [
+  [855598, 'Barrett M82A1 Charging Handle', 'qubodup', 1.0, P(855598, 71257), 'Real pull and release, already trimmed.', 1],
+  [675008, 'AK-47 being cocked 3x', 'serøutōnin--deprivəd', 6.3, P(675008, 7157894), 'Three takes from a metal replica.', 1],
+  [107793, 'guncock', 'j1987', 0.9, P(107793, 367313), 'Airsoft AUG; may sound plasticky.', 1],
+ ]],
+ ['hit.body', 'You hit a dinosaur', [
+  [779805, 'Meaty Damage Impact', 'modusmogulus', 0.7, P(779805, 15956618), 'Designed, short and meaty.', 1],
+  [399183, 'Major punch', 'janbezouska', 1.4, P(399183, 3287894), 'Layered punch; the whip layer may be too much.', 1],
+  [423301, 'VisceralBulletImpacts', 'u1769092', 2.5, P(423301, 8202639), 'Several flesh impacts plus whizzes; trim one.', 1],
+ ]],
+ ['hit.head', 'Headshot', [
+  [511194, 'Headshot', 'Pablobd', 1.0, P(511194, 5701403), 'Recorded foley headshot, most-used CC0 one.', 1],
+  [660769, 'Headshot sound', 'MadPanCake', 0.4, P(660769, 5334162), 'Made as a game critical-hit sound.', 1],
+  [392883, 'Hard Candy / Bone Crunch', 'clif_creates', 1.1, P(392883, 3530854), 'Crunch to layer under a headshot.', 1],
+  [699699, 'Skull Shot', 'magnuswaker', 1.5, P(699699, 11537497), 'Clean skull-crush.', 1],
+ ]],
+ ['player.hurt', 'You get bitten', [
+  [464486, 'Male Grunting In Pain', 'elynch0901', 0.6, P(464486, 4814007), 'Single grunt, "after being attacked".', 1],
+  [547209, 'PainGrunts_09', 'MrFossy', 0.3, P(547209, 129727), 'Very short, made for games; a numbered series.', 1],
+  [257709, 'GRUNT 2', 'vmgraw', 0.8, P(257709, 4028838), 'Male pain grunt.', 1],
+  [515624, 'PlayerHurt2', 'mrickey13', 0.5, P(515624, 6769489), 'Game player-hurt.', 1],
+  [342229, 'Hurt 1 (Male)', 'Christopherderp', 0.7, P(342229, 3908740), '', 1],
+ ]],
+ ['player.heart', 'Low health, repeating', [
+  [22440, 'Single Heartbeat Clean', 'Lunardrive', 0.7, P(22440, 120830), 'One clean lub-dub. Best fit.', 1],
+  [22417, 'Single Heartbeat (muffled)', 'Lunardrive', 0.9, P(22417, 120830), 'Stethoscope-like, inside-your-head.', 1],
+  [273150, 'Heart Beating', 'michorvath', 12.2, P(273150, 3094998), 'Steady beat to trim one from.', 1],
+ ]],
+ ['raptor.chirp', 'Raptor stalking in the mist, every 3-7 s', [
+  [529463, 'Small Dino Raspy Calls', 'CaveboyTup', 1.7, P(529463, 4355850), 'Designed small-dino call, right length.', 1, 'designed'],
+  [805297, 'goose honk', 'jahjahjahjah', 0.7, P(805297, 17326459), 'Single honk: a layer.', 0.8, 'layer'],
+  [160686, 'A squeaking goose', 'antique98', 4.0, P(160686, 2369092), '"A goose with an attitude".', 0.8, 'layer'],
+  [774252, 'hawk_cry', 'loganzsound', 0.8, P(774252, 16682330), 'Red-tailed hawk, quiet over the goose.', 0.85, 'layer'],
+  [871251, 'Sulcata Tortoise Breeding Honk', 'TheKingOfGeeks360', 0.3, P(871251, 15895934), 'The actual Jurassic Park raptor ingredient. Phone recording.', 1, 'layer'],
+ ]],
+ ['raptor.screech', 'Raptor spots you and charges', [
+  [643850, 'raptorshreak', 'Nerdwizard78', 2.9, P(643850, 14149539), '"A Velociraptor shreaking": designed, ready to use.', 1, 'designed'],
+  [828228, 'Raptor / Small Dragon cry', 'HowesenbergFilms', 1.7, P(828228, 9982004), 'Designed; a second variant.', 1, 'designed'],
+  [233278, 'Dinosaur 3', 'JarredGibb', 3.9, P(233278, 4056007), '"Jurassic Farm" set, screechy.', 1, 'designed'],
+  [233277, 'Dinosaur 2', 'JarredGibb', 2.2, P(233277, 4056007), 'Same set.', 1, 'designed'],
+  [269571, 'horse neigh shortened', 'shadoWisp', 1.5, P(269571, 4564240), 'Main JP-style layer.', 0.88, 'layer'],
+  [381200, 'Eagle Cry', 'kaydinhamby', 2.1, P(381200, 6478384), 'Layer with the horse.', 0.8, 'layer'],
+  [233177, 'Pig Grunt and Squeal 4', 'JarredGibb', 1.2, P(233177, 4056007), 'Grit layer.', 0.9, 'layer'],
+ ]],
+ ['raptor.bite', 'Raptor bite lands', [
+  [622809, 'Utahraptor Hiss', 'NaturesTemper', 4.7, P(622809, 3862281), 'Designed hiss, trim to ~1 s.', 1, 'designed'],
+  [830093, 'Jaw or teeth bite at air', 'Wigglesworth', 12.3, P(830093, 6775466), 'Monster air-snaps, several takes.', 0.8, 'layer'],
+  [392883, 'Hard Candy / Bone Crunch', 'clif_creates', 1.1, P(392883, 3530854), 'Crunch layer.', 0.75, 'layer'],
+  [540162, 'Snake hissing', 'schreibsel', 3.0, P(540162, 7898982), 'Hiss tail.', 1, 'layer'],
+  [675513, 'Alligator hiss twice', 'craigsmith', 26.6, P(675513, 2524442), 'Real gator, heavier; cut down.', 1.15, 'layer'],
+ ]],
+ ['raptor.death', 'Raptor killed', [
+  [643928, 'raptorgoesextinct', 'Nerdwizard78', 1.2, P(643928, 14149539), 'Same author as the screech pick.', 0.9, 'designed'],
+  [559621, 'monster_sound_medium_death', 'Leadstarson', 0.9, P(559621, 8216881), 'Short, punchy game death.', 1.1, 'designed'],
+  [276577, 'Dragons Dying Breath', 'MickBoere', 5.9, P(276577, 3411936), 'Last-breath tail to layer after.', 1.15, 'layer'],
+  [396046, 'dying monster', 'rezidentevil', 7.0, P(396046, 4530523), 'Longer; trim.', 1.1, 'designed'],
+ ]],
+ ['rex.roar', 'Rex spots you: the big one', [
+  [529462, 'T-Rex Calls', 'CaveboyTup', 46.2, P(529462, 4355850), 'Built JP-style from alligator, lion, elk. Many takes (growls, roars, death too). I cut it up.', 0.95, 'designed'],
+  [412940, 'Dinosaur Roars and Growls', 'GojiS.O.S.', 121, P(412940, 8082376), 'Lions + elephants + crocs. Long file of takes.', 0.9, 'designed'],
+  [240311, 'Nemean Roar', 'rifthead', 15.6, P(240311, 864571), 'Designed kaiju roar, baked-in reverb.', 1, 'designed'],
+  [320345, 'Dino Hiss Dragon Roar', '999999990', 5.7, P(320345, 5286377), 'Most downloaded; breathing lead-in.', 0.85, 'designed'],
+  [819668, 'Elephant sound', 'ikbenraar', 7.8, P(819668, 754558), 'Zoo elephant: the high attack layer.', 0.65, 'layer'],
+  [263115, 'Tiger Roar', 'lauramellis', 11.4, P(263115, 672090), 'Single zoo tiger roar: the body layer.', 0.75, 'layer'],
+  [527844, 'Alligator Growls 02', 'D.jones', 9.9, P(527844, 11431915), 'The low tail layer.', 0.7, 'layer'],
+ ]],
+ ['rex.growl', 'Rex stalking, every 3-7 s', [
+  [688734, 'T Rex Closed Mouth Vocalizations', 'mescamilla1980', 41, P(688734, 11894484), 'Closed-mouth booming like real dinos may have made.', 1, 'designed'],
+  [439280, 'Angry tiger', 'schots', 66, P(439280, 954919), 'Caged tiger, many takes, reverby.', 0.7, 'layer'],
+  [437933, 'Alligator Growl', 'craigsmith', 37.3, P(437933, 2524442), 'Low grumble under the tiger.', 0.8, 'layer'],
+  [763026, 'Bear Angry Growl', 'celldroid', 5.8, P(763026, 1764719), 'Wild black bear, some handling noise.', 0.75, 'layer'],
+ ]],
+ ['rex.step', 'Each rex footfall (the screen shakes too)', [
+  [77027, 'DinoSteps1', 'andysm', 2.1, P(77027, 233719), 'Made for exactly this.', 1],
+  [721601, 'Giant step', 'DasWaff', 1.5, P(721601, 2617407), 'Huge step snapping branches.', 0.9],
+  [622737, 'GiantStompFootsteps', 'RobHorror240', 25.1, P(622737, 13749473), 'A run of stomps to cut.', 1],
+  [51817, 'thud bassy slam', 'kyles', 2.0, P(51817, 612689), 'Low layer.', 0.7, 'layer'],
+ ]],
+ ['rex.bite', 'Rex bite lands', [
+  [467701, 'monster bite', 'LucasDuff', 2.0, P(467701, 8272463), '"A large animal biting down into flesh".', 0.8],
+  [527489, 'Teeth Snapping', 'LucasDuff', 13.8, P(527489, 8272463), 'Air chomps; one at 0.6 for the jaw clack.', 0.6, 'layer'],
+  [445987, 'Zombie biting on bones', 'Breviceps', 0.6, P(445987, 9159316), 'Crunch layer.', 0.8, 'layer'],
+  [192146, 'Bone Crunch Fast', 'BrassKnucklesFilms', 0.9, P(192146, 2969885), 'Alternative crunch.', 0.8, 'layer'],
+ ]],
+ ['rex.death', 'Rex killed', [
+  [366096, 'Dragon Death', 'bevibeldesign', 10.7, P(366096, 4557960), 'Giant beast death; may read demonic.', 0.8],
+  [276577, 'Dragons Dying Breath', 'MickBoere', 5.9, P(276577, 3411936), 'Tail after a slowed roar.', 0.8, 'layer'],
+  [734841, 'dyingBeast', 'QuantumFellow', 4.2, P(734841, 14713973), 'From human foley.', 1],
+  [813270, "Creature's Last Breath", 'qubodup', 25, P(813270, 71257), 'Long, ambient fade.', 1],
+ ]],
+ ['body.fall', 'A dinosaur hits the ground', [
+  [457531, 'Dinosaur falls to the ground', 'Breviceps', 5.8, P(457531, 9159316), 'Made for this: heavy hit with a second bounce.', 0.85],
+  [504626, 'BODY FALL V HVY DIRT', 'leonelmail', 1.6, P(504626, 4437257), 'Heavy dirt fall; trim a human landing at the end.', 0.6],
+  [392008, 'HEAVY BAG DROP DIRT', 'burbujafilms', 42.5, P(392008, 917043), 'Drops onto dirt and leaves, birds behind.', 0.6],
+ ]],
+ ['amb.forest', 'Loops all game', [
+  [288899, 'Rocky Mountain Outdoors: wind and birds', 'petebuchwald', 90, P(288899, 2367139), 'Pine wind + birds, no people or traffic.', 1],
+  [490846, 'Birds In Forest (Scotland)', 'BurghRecords', 113, P(490846, 7241289), 'Birds and wind; misty mood.', 1],
+  [335889, 'Wind Through Trees', 'Yoyodaman234', 285, P(335889, 2792951), 'Wind first, birds behind.', 1],
+  [538197, 'Wind in the Trees with Birds', 'HighPeakEmma', 32, P(538197, 11335579), 'Strong wind.', 1],
+ ]],
+ ['amb.stream', 'Loops, louder near the water', [
+  [231536, 'Creek 06 (loop)', 'VKProduktion', 36, P(231536, 4034520), 'The only one sold as loopable.', 1],
+  [197023, 'small stream forest', 'Yuval', 143, P(197023, 770707), 'Binaural small forest stream.', 1],
+  [433589, 'Stream River Water Up Close', 'jackthemurray', 69, P(433589, 5618682), 'Soft, close, popular.', 1],
+  [446019, 'Gentle Stream', 'BurghRecords', 64, P(446019, 7241289), 'Gentle Scottish stream.', 1],
+ ]],
+];
+const RATES = [0.5, 0.6, 0.7, 0.75, 0.8, 0.85, 0.9, 1, 1.1, 1.2];
+const picks = new Map();
+const nav = document.getElementById('nav'), list = document.getElementById('list');
+for (const [slot, when, cands] of S) {
+  nav.insertAdjacentHTML('beforeend', `<a href="#${slot}">${slot}</a>`);
+  const sec = document.createElement('section'); sec.id = slot;
+  sec.innerHTML = `<h2>${slot}</h2><p class="when">${when}</p>`;
+  for (const [id, title, author, dur, url, note, rate, tag] of cands) {
+    const key = slot + ':' + id, row = document.createElement('div'); row.className = 'row';
+    const near = RATES.reduce((a, b) => (Math.abs(b - rate) < Math.abs(a - rate) ? b : a));
+    row.innerHTML = `<input type="checkbox" aria-label="pick ${title}">
+      <div><div class="t"><a href="https://freesound.org/s/${id}/" target="_blank" rel="noopener">${title}</a>${tag ? `<span class="tag">${tag}</span>` : ''}</div>
+      <div class="meta">${author} · ${dur < 60 ? dur + ' s' : Math.floor(dur / 60) + ':' + String(Math.round(dur % 60)).padStart(2, '0')}${rate !== 1 ? ` · suggested speed ${rate}` : ''}</div>
+      ${note ? `<div class="note">${note}</div>` : ''}</div>
+      <div class="ctl"><audio controls preload="none" src="${url}"></audio>
+      <label class="meta">speed <select>${RATES.map((r) => `<option ${r === near ? 'selected' : ''}>${r}</option>`).join('')}</select></label></div>`;
+    const au = row.querySelector('audio'), sel = row.querySelector('select'), cb = row.querySelector('input');
+    const apply = () => { au.preservesPitch = false; au.mozPreservesPitch = false; au.webkitPreservesPitch = false; au.playbackRate = +sel.value; };
+    au.addEventListener('play', apply); sel.addEventListener('change', () => { apply(); if (cb.checked) picks.set(key, `${slot}  ${id}  ${title} @ ${sel.value}`); });
+    // only one sound plays at a time
+    au.addEventListener('play', () => document.querySelectorAll('audio').forEach((a) => a !== au && a.pause()));
+    cb.addEventListener('change', () => { row.classList.toggle('on', cb.checked); cb.checked ? picks.set(key, `${slot}  ${id}  ${title} @ ${sel.value}`) : picks.delete(key); count(); });
+    sec.appendChild(row);
+  }
+  list.appendChild(sec);
+}
+const count = () => { document.getElementById('count').textContent = picks.size + ' picked'; };
+document.getElementById('copy').addEventListener('click', async () => {
+  const txt = [...picks.values()].join('\n') || '(nothing picked yet)', out = document.getElementById('out');
+  out.value = txt; out.hidden = false;
+  try { await navigator.clipboard.writeText(txt); document.getElementById('copy').textContent = 'Copied'; } catch { out.select(); }
+  setTimeout(() => (document.getElementById('copy').textContent = 'Copy Picks'), 1500);
+});
+</script>
+</body>
+</html>

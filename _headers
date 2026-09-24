@@ -6,3 +6,10 @@
 # textures aren't versioned
 /assets/tex/*
   Cache-Control: public, max-age=86400
+# sound files: never overwrite one in place, give a changed sound a new name (the manifest sfx_vN.json is versioned)
+/assets/sfx/*.mp3
+  Cache-Control: public, max-age=31536000, immutable
+/assets/sfx/*.m4a
+  Cache-Control: public, max-age=31536000, immutable
+/assets/sfx/*.ogg
+  Cache-Control: public, max-age=31536000, immutable

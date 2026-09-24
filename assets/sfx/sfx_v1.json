@@ -1,0 +1,130 @@
+{
+  "rifle.shot": [
+    "rifle_shot_854231_0.mp3",
+    "rifle_shot_427596_4.mp3"
+  ],
+  "rifle.mech": [
+    "rifle_mech_153560_0.mp3"
+  ],
+  "rifle.tail": [
+    "rifle_tail_734096_0.mp3"
+  ],
+  "rifle.dry": [
+    "rifle_dry_151068_6.mp3"
+  ],
+  "rifle.magout": [
+    "rifle_magout_104407_6.mp3"
+  ],
+  "rifle.magin": [
+    "rifle_magin_379977_0.mp3"
+  ],
+  "rifle.bolt": [
+    "rifle_bolt_855598_0.mp3"
+  ],
+  "hit.body": [
+    "hit_body_779805_0.mp3"
+  ],
+  "hit.head": [
+    {
+      "files": [
+        "hit_head_511194_2.mp3"
+      ]
+    },
+    {
+      "files": [
+        "hit_head_392883_0.mp3"
+      ],
+      "gain": 0.45
+    }
+  ],
+  "player.hurt": [
+    "player_hurt_464486_6.mp3",
+    "player_hurt_547209_0.mp3",
+    "player_hurt_257709_22.mp3"
+  ],
+  "player.heart": [
+    "player_heart_22440_0.mp3"
+  ],
+  "raptor.chirp": [
+    "raptor_chirp_529463_0.mp3",
+    "raptor_chirp_529463_106.mp3",
+    "raptor_chirp_529463_0_r85.mp3",
+    "raptor_chirp_529463_106_r114.mp3"
+  ],
+  "raptor.screech": [
+    "raptor_screech_643850_0.mp3",
+    "raptor_screech_828228_15.mp3"
+  ],
+  "raptor.bite": [
+    {
+      "files": [
+        "raptor_bite_392883_0_r75.mp3"
+      ]
+    },
+    {
+      "files": [
+        "raptor_bite_622809_40.mp3"
+      ],
+      "gain": 0.5
+    }
+  ],
+  "raptor.death": [
+    {
+      "files": [
+        "raptor_death_643928_0_r90.mp3"
+      ]
+    },
+    {
+      "files": [
+        "raptor_death_276577_0_r114.mp3"
+      ],
+      "gain": 0.35,
+      "delay": 0.5
+    }
+  ],
+  "rex.roar": [
+    "rex_roar_529462_409.mp3",
+    "rex_roar_529462_1030.mp3",
+    "rex_roar_320345_290_r85.mp3"
+  ],
+  "rex.growl": [
+    "rex_growl_529462_1570.mp3",
+    "rex_growl_529462_1939.mp3",
+    "rex_growl_529462_2300.mp3",
+    "rex_growl_688734_1855.mp3",
+    "rex_growl_688734_2275.mp3",
+    "rex_growl_688734_3085.mp3"
+  ],
+  "rex.step": [
+    "rex_step_77027_2.mp3",
+    "rex_step_721601_2.mp3",
+    "rex_step_77027_2_r85.mp3"
+  ],
+  "rex.bite": [
+    "rex_bite_467701_36_r80.mp3"
+  ],
+  "rex.death": [
+    {
+      "files": [
+        "rex_death_529462_3650_r85.mp3"
+      ]
+    },
+    {
+      "files": [
+        "rex_death_276577_0_r80.mp3"
+      ],
+      "gain": 0.5,
+      "delay": 4.5
+    }
+  ],
+  "body.fall": [
+    "body_fall_457531_0_r85.mp3",
+    "body_fall_457531_285_r85.mp3"
+  ],
+  "amb.forest": [
+    "amb_forest_288899_40.mp3"
+  ],
+  "amb.stream": [
+    "amb_stream_231536_0.mp3"
+  ]
+}

@@ -5,3 +5,5 @@ __pycache__/
 *.blend1
 .wrangler/
 node_modules/
+tools/sfx_src/
+.sfxenv/
