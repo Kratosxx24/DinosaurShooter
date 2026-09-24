@@ -26,7 +26,7 @@ Cloudflare cache by URL. `BLENDER` env var overrides the blender.exe path.
 
 | file | source |
 |---|---|
-| `raptor_v1.glb` | `blender/generators/dino.py` (KIND=raptor): 22-bone FK rig, clips Idle/Run/Attack/Roar/Death, `knots` extras for hitboxes |
+| `raptor_v2.glb` | `blender/generators/dino.py` (KIND=raptor): metaball body + alpha-card feathers (`Raptor_Feathers`), baked scale normal/detail maps, painted-iris eyes; 22-bone FK rig, clips Idle/Run/Attack/Roar/Death, `knots` extras for hitboxes; loaded via `RAPTOR_V`. index.html keeps its Skin/Eye/Feather textures (alphaTest, DoubleSide). Close-ups: `blender/tools/model_views.py --engine eevee --detail` |
 | `rex_v2.glb` | `blender/generators/rex.py`: SDF-sculpted body (`sdf.py`: splined sweeps + ellipsoid muscles -> surface nets), decimated to 12k tris; same rig/clip/knot contract. `DETAIL=hero` builds the dense mesh for `blender/renders/rex_showcase.py` (Cycles: `--shot hero|head`, `--preview`) |
 | `rifle_v2.glb` | `blender/generators/rifle.py`: scoped carbine, nodes Rifle_Body/Mag/Bolt + empties Rifle_Muzzle/Rifle_Sight (scope eye point); loaded via `RIFLE_V` |
 | `world_v2.glb`, `plants_v2.glb`, `instances_v2.json` | `blender/tools/export_world.py` (builds `blender/world/forest_house.py --game`; plants from `world/_flora.py`); loaded via `WORLD_V`. The `Water` sheet covers the channel only: UVMap = metres along/across the flow, 2nd UV set x = depth to the bed, read by the water shader in index.html |

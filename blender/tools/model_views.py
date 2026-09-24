@@ -2,7 +2,7 @@
 For judging form: silhouette, joints, head shape. Complements anim_preview.py's small contact sheets.
 
     blender -b --factory-startup --python tools/model_views.py -- <generator.py> <out_prefix>
-        [--set KEY=VALUE] [--pose Run:0.25] [--color vertex|single] [--engine eevee] [--size 900x600]
+        [--set KEY=VALUE] [--pose Run:0.25] [--color vertex|single] [--engine eevee] [--size 900x600] [--detail]
 
 Writes <out_prefix>_views.png: a 2x2 grid of side, three-quarter front, three-quarter rear and a head close-up.
 """
@@ -111,6 +111,16 @@ front = shot(c + Vector((d * 0.8, -d * 1.1, 0.35 * size)), c, 50, tmp)
 rear = shot(c + Vector((-d * 0.9, d * 1.0, 0.45 * size)), c, 50, tmp)
 hv = Vector(head)
 close = shot(hv + Vector((size * 0.28, -size * 0.3, size * 0.08)), hv + Vector((0, -size * 0.05, -size * 0.02)), 50, tmp)
+if "--detail" in argv:                       # macro shots: the eye, the face, the foot, the shin
+    K = g["K"]
+    eye = g["ROT"] @ Vector(g["EYES"][0][0]) if "EYES" in g else hv
+    foot = K["ballL"][0]
+    shin = K["ankleL"][0].lerp(K["kneeL"][0], 0.4)
+    s_ = g["S"]
+    rear = shot(eye + Vector((0.3, -0.16, 0.05)) * s_, eye, 60, tmp)
+    close = shot(hv + Vector((0.55, -0.6, 0.2)) * s_, hv + Vector((0, -0.12, -0.03)) * s_, 50, tmp)
+    side = shot(foot + Vector((0.55, -0.5, 0.3)) * s_, foot + Vector((0, -0.1, 0.03)) * s_, 50, tmp)
+    front = shot(shin + Vector((0.75, -0.35, 0.1)) * s_, shin, 50, tmp)
 sheet = np.concatenate([np.concatenate([rear, close], axis=1), np.concatenate([side, front], axis=1)], axis=0)
 out = bpy.data.images.new("_sheet", sheet.shape[1], sheet.shape[0], alpha=True)
 out.pixels.foreach_set(sheet.ravel())
