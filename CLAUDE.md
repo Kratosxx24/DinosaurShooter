@@ -26,7 +26,8 @@ Cloudflare cache by URL. `BLENDER` env var overrides the blender.exe path.
 
 | file | source |
 |---|---|
-| `raptor_v1.glb`, `rex_v1.glb` | `blender/generators/dino.py` (KIND=raptor / rex): skin-modifier body, 22-bone FK rig, clips Idle/Run/Attack/Roar/Death, `knots` extras for hitboxes |
+| `raptor_v1.glb` | `blender/generators/dino.py` (KIND=raptor): 22-bone FK rig, clips Idle/Run/Attack/Roar/Death, `knots` extras for hitboxes |
+| `rex_v2.glb` | `blender/generators/rex.py`: SDF-sculpted body (`sdf.py`: splined sweeps + ellipsoid muscles -> surface nets), decimated to 12k tris; same rig/clip/knot contract. `DETAIL=hero` builds the dense mesh for `blender/renders/rex_showcase.py` (Cycles: `--shot hero|head`, `--preview`) |
 | `rifle_v2.glb` | `blender/generators/rifle.py`: scoped carbine, nodes Rifle_Body/Mag/Bolt + empties Rifle_Muzzle/Rifle_Sight (scope eye point); loaded via `RIFLE_V` |
 | `world_v2.glb`, `plants_v2.glb`, `instances_v2.json` | `blender/tools/export_world.py` (builds `blender/world/forest_house.py --game`; plants from `world/_flora.py`); loaded via `WORLD_V`. The `Water` sheet covers the channel only: UVMap = metres along/across the flow, 2nd UV set x = depth to the bed, read by the water shader in index.html |
 | `tex/*.jpg` | Poly Haven CC0: forest_leaves_02, bark_brown_02, mossy_rock, concrete_wall_003, wood_floor_deck |

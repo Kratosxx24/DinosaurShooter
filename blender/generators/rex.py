@@ -41,12 +41,14 @@ EYE_STRENGTH = 12.0
 rng = random.Random(11)
 
 # colours (linear): olive-umber back, dusty tan belly, near-black bands, a rust flush on the face
-C_BACK = np.array((0.045, 0.036, 0.022))
-C_FLANK = np.array((0.11, 0.085, 0.05))
+C_BACK = np.array((0.05, 0.034, 0.018))
+C_FLANK = np.array((0.12, 0.08, 0.042))
 C_BELLY = np.array((0.34, 0.29, 0.21))
 C_BAND = np.array((0.016, 0.013, 0.01))
 C_RUST = np.array((0.16, 0.055, 0.025))
-C_MOUTH = np.array((0.22, 0.035, 0.03))
+C_MOUTH = np.array((0.085, 0.016, 0.014))
+C_GUM = np.array((0.15, 0.045, 0.04))
+C_TONGUE = np.array((0.19, 0.06, 0.055))
 C_KERATIN = (0.55, 0.5, 0.4)
 
 # ---------------------------------------------------------------- knots: the rig and the game's hitboxes
@@ -106,7 +108,13 @@ def hp(x, z, y=0.0):
 
 def lip_z(x):
     """Upper/lower jaw parting line, head-local. Slightly sinuous like a rex tooth row."""
-    return np.interp(x, [0.0, 0.2, 0.55, 0.95, 1.25, 1.45], [-0.3, -0.33, -0.39, -0.4, -0.37, -0.33])
+    return np.interp(x, [0.0, 0.2, 0.55, 0.95, 1.25, 1.45], [-0.3, -0.36, -0.395, -0.41, -0.405, -0.38])
+
+
+def jaw_w(x, upper):
+    """Half-width of the tooth rows, head-local x."""
+    xs = [0.3, 0.7, 1.0, 1.3, 1.45]
+    return np.interp(x, xs, [0.36, 0.25, 0.18, 0.12, 0.08] if upper else [0.28, 0.2, 0.14, 0.1, 0.07])
 
 
 def sculpt():
@@ -126,49 +134,53 @@ def sculpt():
     side += [Op(E((1.65, 0.3, 2.5), (0.35, 0.2, 0.3)), k=0.3)]                      # pectoral / shoulder
 
     # --- neck: thick S-curve into the back of the skull, throat pouch under the jaw
-    mid += sweep([((2.2, 0, 3.2), (0.46, 0.56)), ((2.72, 0, 3.58), (0.38, 0.45)), ((3.05, 0, 3.8), (0.33, 0.36))], k=0.0)
+    mid += sweep([((2.2, 0, 3.2), (0.46, 0.56)), ((2.72, 0, 3.58), (0.38, 0.45)), ((3.0, 0, 3.78), (0.3, 0.34))], k=0.35)
     mid += [Op(E((2.2, 0, 3.72), (0.55, 0.3, 0.2), ), k=0.3)]                       # nuchal muscle hump
     mid += [Op(E((2.95, 0, 3.3), (0.42, 0.3, 0.28)), k=0.3)]                        # throat
 
-    # --- skull (head-local profile): broad at the back, narrow snout, flat-ish top
-    up = [(0.05, 0.02, 0.37, 0.3), (0.33, -0.01, 0.36, 0.33), (0.68, -0.07, 0.25, 0.3), (1.02, -0.13, 0.18, 0.25),
-          (1.3, -0.18, 0.13, 0.19), (1.42, -0.2, 0.1, 0.14)]
-    mid += [Op(sdf.ESeg(hp(a[0], a[1]), hp(b[0], b[1]), a[2:], b[2:]), 0.0) for a, b in zip(up, up[1:])]
-    lo = [(0.02, -0.4, 0.3, 0.17), (0.4, -0.5, 0.27, 0.16), (0.82, -0.53, 0.19, 0.14), (1.18, -0.51, 0.13, 0.12),
-          (1.36, -0.47, 0.09, 0.1)]
-    jaw = [Op(sdf.ESeg(hp(a[0], a[1]), hp(b[0], b[1]), a[2:], b[2:]), 0.0) for a, b in zip(lo, lo[1:])]
-    mid += [Op(j.p, k=0.06) for j in jaw]
-    side += [Op(E(hp(0.12, 0.08, 0.22), (0.26, 0.15, 0.2)), k=0.12)]               # jaw adductors (temporal)
-    side += [Op(E(hp(0.2, -0.22, 0.3), (0.3, 0.1, 0.13), rot=_rot_y(-0.15)), k=0.1)]  # jugal cheek flare
-    side += [Op(E(hp(0.1, -0.44, 0.26), (0.22, 0.09, 0.12)), k=0.1)]              # surangular bulge
-    side += [Op(E(hp(0.44, 0.24, 0.2), (0.12, 0.08, 0.065), rot=_rot_y(0.25)), k=0.07)]  # lacrimal horn
-    side += [Op(E(hp(0.3, 0.2, 0.26), (0.07, 0.07, 0.06)), k=0.05)]               # postorbital boss
-    side += [Op(E(hp(0.43, 0.1, 0.33), (0.075, 0.08, 0.075)), k=0.05, sub=True)]   # orbit
-    side += [Op(E(hp(1.36, -0.08, 0.085), (0.04, 0.03, 0.028)), k=0.03, sub=True)]  # nostril
-    side += [Op(E(hp(0.62, -0.12, 0.24), (0.2, 0.05, 0.09)), k=0.06, sub=True)]   # antorbital hollow
-    side += [Op(E(hp(0.85 + 0.12 * i, -0.33, 0.17 - 0.03 * i), (0.07, 0.04, 0.03)), k=0.04) for i in range(4)]  # lip scutes
+    # --- skull (head-local profile): broad temporal box at the back, deep boxy snout, flat-topped
+    #     (x, z centre, half-width, half-height), rounded-box sections so it reads as bone under skin
+    up = [(-0.3, -0.06, 0.3, 0.26), (0.0, -0.04, 0.42, 0.3), (0.3, -0.05, 0.42, 0.34), (0.62, -0.09, 0.29, 0.31), (0.95, -0.14, 0.2, 0.27),
+          (1.25, -0.18, 0.145, 0.22), (1.45, -0.22, 0.105, 0.155)]
+    mid += sweep([(hp(x, z), (w, h)) for x, z, w, h in up], k=0.2, p=2.3, cap1=0.09)
+    lo = [(-0.3, -0.42, 0.25, 0.16), (-0.02, -0.45, 0.34, 0.18), (0.35, -0.55, 0.3, 0.19), (0.75, -0.555, 0.21, 0.14),
+          (1.08, -0.525, 0.14, 0.105), (1.28, -0.495, 0.1, 0.075)]
+    mid += sweep([(hp(x, z), (w, h)) for x, z, w, h in lo], k=0.1, p=2.2, cap1=0.07)
+    side += [Op(E(hp(0.06, 0.1, 0.24), (0.24, 0.16, 0.17)), k=0.12)]                # jaw adductors (temporal bulge)
+    side += [Op(E(hp(0.2, -0.26, 0.37), (0.24, 0.06, 0.09)), k=0.14)]               # jugal cheek flare
+    side += [Op(E(hp(0.0, -0.3, 0.41), (0.07, 0.06, 0.06)), k=0.06)]              # quadratojugal knob
+    side += [Op(E(hp(0.0, -0.3, 0.28), (0.2, 0.11, 0.18)), k=0.18)]              # cheek muscle into the jaw
+    side += [Op(E(hp(0.3, -0.5, 0.28), (0.24, 0.06, 0.09)), k=0.14)]               # surangular bulge
+    side += [Op(E(hp(0.42, 0.17, 0.31), (0.22, 0.07, 0.05), rot=_rot_y(0.12)), k=0.08)]  # brow ridge
+    side += [Op(E(hp(0.52, 0.22, 0.27), (0.08, 0.05, 0.045)), k=0.06)]               # lacrimal horn
+    side += [Op(E(hp(0.27, 0.16, 0.37), (0.06, 0.05, 0.04)), k=0.05)]                 # postorbital boss
+    side += [Op(E(hp(0.43, 0.06, 0.41), (0.085, 0.075, 0.07)), k=0.04, sub=True)]  # orbit
+    side += [Op(E(hp(1.37, -0.1, 0.12), (0.045, 0.035, 0.03)), k=0.03, sub=True)]  # nostril
     r = random.Random(5)
-    for i in range(14):                                                            # nasal rugosity
-        x = 0.62 + 0.72 * i / 13
+    for i in range(16):                                                            # nasal rugosity
+        x = 0.62 + 0.76 * i / 15
         topz = np.interp(x, [u[0] for u in up], [u[1] + u[3] for u in up])
-        yy = r.uniform(-0.05, 0.05)
-        mid += [Op(E(hp(x, topz - 0.015, yy), (r.uniform(0.03, 0.05), 0.035, 0.022)), k=0.03)]
-    # parting line: a thin slab from the snout back to the hinge (the corner of the mouth stays skin)
-    mouth = []
-    xs = np.linspace(0.3, 1.5, 13)
-    for a, b in zip(xs, xs[1:]):
-        wa = np.interp(a, [0.3, 1.0, 1.5], [0.36, 0.25, 0.14])
-        wb = np.interp(b, [0.3, 1.0, 1.5], [0.36, 0.25, 0.14])
-        mouth.append(Op(sdf.ESeg(hp(a, lip_z(a)), hp(b, lip_z(b)), (wa, 0.012), (wb, 0.012), cap=0.02), k=0.015, sub=True))
-    mid += mouth
+        yy = r.uniform(-0.06, 0.06)
+        mid += [Op(E(hp(x, topz - 0.012, yy), (r.uniform(0.03, 0.045), 0.03, 0.02)), k=0.025)]
+    # --- mouth: a thin parting slab from the snout back to the hinge (the corner of the mouth stays skin), a vaulted
+    #     palate over it, a trough between the lower tooth rows and a tongue lying in the trough
+    xs = np.linspace(0.3, 1.5, 7)
+    slab_w = lambda x: np.interp(x, [0.3, 1.0, 1.5], [0.36, 0.25, 0.14])  # noqa: E731
+    slab = sweep([(hp(x, lip_z(x)), (slab_w(x), 0.012)) for x in xs], k=0.015, cap0=0.02, cap1=0.02, cut=True)
+    px = np.linspace(0.36, 1.34, 6)
+    palate = sweep([(hp(x, lip_z(x) + 0.02), (0.55 * jaw_w(x, True), 0.045)) for x in px], k=0.03, cut=True)
+    trough = sweep([(hp(x, lip_z(x) - 0.02), (0.6 * jaw_w(x, False), 0.05)) for x in px], k=0.03, cut=True)
+    tongue = sweep([(hp(0.28, lip_z(0.28) - 0.085), (0.1, 0.05)), (hp(0.7, lip_z(0.7) - 0.07), (0.085, 0.04)),
+                    (hp(1.05, lip_z(1.05) - 0.058), (0.05, 0.026))], k=0.02, cap1=0.045)
+    mid += slab + palate + trough + tongue
+    mouth = {"cuts": [o.p for o in slab + palate + trough], "tongue": tongue[0].p}
 
     # --- legs (+Y side): drumstick thigh, calf, slim metatarsus, three toes and a dewclaw
-    side += sweep([((0.02, 0.5, 2.95), (0.36, 0.58)), ((0.32, 0.6, 2.25), (0.34, 0.48)), ((0.58, 0.66, 1.72), (0.19, 0.23))], k=0.3)
-    side += [Op(E((0.3, 0.63, 2.35), (0.55, 0.34, 0.8), rot=_rot_y(-0.42)), k=0.25)]   # quad/iliotibialis mass
-    side += sweep([((0.58, 0.66, 1.72), (0.19, 0.23)), ((0.3, 0.64, 1.22), (0.15, 0.18)), ((-0.1, 0.62, 0.7), (0.095, 0.11))], k=0.12)
-    side += [Op(E((0.16, 0.64, 1.3), (0.15, 0.16, 0.45), rot=_rot_y(0.55)), k=0.12)]    # gastrocnemius
-    side += [Op(E((0.62, 0.66, 1.75), (0.14, 0.17, 0.14)), k=0.1)]                     # knee cap
-    side += sweep([((-0.1, 0.62, 0.7), (0.1, 0.11)), ((0.03, 0.62, 0.4), (0.09, 0.085)), ((0.16, 0.62, 0.14), (0.12, 0.09))], k=0.08)
+    side += sweep([((0.02, 0.5, 2.95), (0.38, 0.6)), ((0.34, 0.62, 2.2), (0.36, 0.5)), ((0.6, 0.66, 1.74), (0.22, 0.27)),
+                   ((0.3, 0.64, 1.2), (0.16, 0.19)), ((-0.1, 0.62, 0.7), (0.1, 0.115)), ((0.03, 0.62, 0.4), (0.09, 0.085)),
+                   ((0.16, 0.62, 0.14), (0.12, 0.09))], k=0.3, sub=8)
+    side += [Op(E((0.3, 0.64, 2.25), (0.5, 0.36, 0.78), rot=_rot_y(-0.42)), k=0.3)]   # quad/iliotibialis mass
+    side += [Op(E((0.2, 0.64, 1.32), (0.15, 0.16, 0.5), rot=_rot_y(0.55)), k=0.2)]    # gastrocnemius
     side += [Op(E((-0.13, 0.62, 0.72), (0.1, 0.11, 0.1)), k=0.06)]                     # heel
     for dy, reach, rr in ((0.0, 0.6, 1.0), (0.2, 0.46, 0.9), (-0.19, 0.44, 0.88)):      # digits III, IV, II
         a = np.array((0.16, 0.62, 0.12))
@@ -306,11 +318,6 @@ def HV(x, z, y=0.0):
     return Vector(hp(x, z, y))
 
 
-def jaw_w(x, upper):
-    xs = [0.3, 0.7, 1.0, 1.3, 1.45]
-    return float(np.interp(x, xs, [0.33, 0.24, 0.18, 0.12, 0.08] if upper else [0.26, 0.2, 0.15, 0.1, 0.07]))
-
-
 # upper teeth: premaxillary incisors at the front, big maxillary daggers behind, shrinking toward the hinge
 for i in range(13):
     x = 1.38 - i * 0.078
@@ -331,9 +338,9 @@ for i in range(11):
 # eyes, set in the orbits under the lacrimal horn
 EYE_C = []
 for s in (1, -1):
-    c = HV(0.44, 0.1, s * 0.285)
+    c = HV(0.43, 0.06, s * 0.31)
     EYE_C.append(c)
-    sphere(c, 0.05, "Head", 1)
+    sphere(c, 0.044, "Head", 1)
 # foot claws (digits II-IV and the dewclaw), hand claws
 for sd, s in (("L", 1), ("R", -1)):
     for dy, reach in ((0.0, 0.6), (0.2, 0.46), (-0.19, 0.44)):
@@ -384,14 +391,25 @@ def colours(P, N):
     c = c * (1 - 0.7 * face[:, None]) + C_RUST[None] * 0.7 * face[:, None]
     legs_dark = legs * 0.4
     c = c * (1 - legs_dark[:, None]) + C_BACK[None] * legs_dark[:, None]
-    # mouth interior: within the carved parting slab
-    lz = H0[2] + lip_z(np.clip(hx, 0, 1.5))
-    inside = (hx > 0.28) & (np.abs(z - lz) < 0.045) & (np.abs(y) < np.interp(hx, [0.3, 1.0, 1.5], [0.3, 0.2, 0.1]))
-    c[inside] = C_MOUTH
-    return np.clip(c, 0, 1), inside
+    # mouth interior: whatever lies on the carved volumes, inside the tooth rows (the outer lips stay skin)
+    hxc = np.clip(hx, 0, 1.5)
+    lz = H0[2] + lip_z(hxc)
+    dcut = sdf.eval_points([sdf.Op(p_) for p_ in MOUTH["cuts"]], P)
+    dton = sdf.eval_points([sdf.Op(MOUTH["tongue"])], P)
+    inside = (dcut < 0.02) & (hx > 0.25) & (np.abs(y) < 0.8 * jaw_w(hxc, True))
+    corner = (hx > 0.02) & (hx <= 0.3) & (np.abs(z - lz) < 0.07) & (np.abs(y) < 0.3)     # the cheek skin that stretches
+    inside |= corner
+    tongue = inside & (dton < 0.015)
+    palate = inside & (z > lz + 0.005)
+    gum = inside & ~tongue & (np.abs(y) > 0.5 * np.where(z > lz, jaw_w(hxc, True), jaw_w(hxc, False)))
+    deep = (0.2 + 0.8 * smooth(0.4, 1.15, hx))[:, None]                       # darker toward the throat
+    c[inside] = (C_MOUTH[None] * deep)[inside]
+    c[gum] = (C_GUM[None] * deep)[gum]
+    c[tongue] = (C_TONGUE[None] * (0.35 + 0.65 * deep))[tongue]
+    return np.clip(c, 0, 1), inside, np.stack([tongue, palate, gum], 1).astype(np.float32)
 
 
-C, MOUTH_V = colours(P[:n_body], Nb)
+C, MOUTH_V, MOUTH_PARTS = colours(P[:n_body], Nb)
 r = np.random.default_rng(11)
 C *= r.uniform(0.9, 1.1, (len(C), 1))
 allc = np.tile(np.array((*C_KERATIN, 1.0)), (len(P), 1))
@@ -409,13 +427,27 @@ if DETAIL == "hero":
     m[:n_body, 0], m[:n_body, 1], m[:n_body, 2] = dorsal, MOUTH_V, belly
     da = body_me.color_attributes.new(PREFIX + "Detail", "FLOAT_COLOR", "POINT")
     da.data.foreach_set("color", m.ravel())
+    # R = tongue, G = palate, B = gums
+    mp = np.zeros((len(P), 4), np.float32)
+    mp[:, 3] = 1
+    mp[:n_body, :3] = MOUTH_PARTS
+    body_me.color_attributes.new(PREFIX + "Mouth", "FLOAT_COLOR", "POINT").data.foreach_set("color", mp.ravel())
+    # scale regions: R = head (fine rugose scales), G = lower legs and feet (fine), B = the row of big scutes
+    # down the spine
+    Pb = P[:n_body]
+    rg = np.zeros((len(P), 4), np.float32)
+    rg[:, 3] = 1
+    rg[:n_body, 0] = smooth(-0.15, 0.15, Pb[:, 0] - H0[0])
+    rg[:n_body, 1] = smooth(1.6, 1.1, Pb[:, 2]) * (np.abs(Pb[:, 1]) > 0.25)
+    rg[:n_body, 2] = smooth(0.5, 0.85, Nb[:, 2]) * smooth(0.16, 0.05, np.abs(Pb[:, 1])) * smooth(2.8, 2.3, Pb[:, 0])         * smooth(-5.5, -4.5, Pb[:, 0])
+    body_me.color_attributes.new(PREFIX + "Region", "FLOAT_COLOR", "POINT").data.foreach_set("color", rg.ravel())
     ev = np.zeros((len(P), 3), np.float32)
     for s, c in zip((1, -1), EYE_C):
-        fwd = Vector((0.55, s * 0.84, 0.0)).normalized()     # eyes look forward-outward
+        fwd = Vector((0.6, s * 0.8, 0.0)).normalized()     # eyes look forward-outward
         lat = Vector((0, 0, 1)).cross(fwd).normalized()
         near = np.linalg.norm(P - np.array(c), axis=1) < 0.06
         q = P[near] - np.array(c)
-        ev[near] = np.stack([q @ np.array(lat), q[:, 2], q @ np.array(fwd)], 1) / 0.05
+        ev[near] = np.stack([q @ np.array(lat), q[:, 2], q @ np.array(fwd)], 1) / 0.044
     ea = body_me.attributes.new(PREFIX + "EyeUV", "FLOAT_VECTOR", "POINT")
     ea.data.foreach_set("vector", ev.ravel())
 
@@ -500,7 +532,9 @@ for j, n in enumerate(names):
 hx = -Pw[:n_body, 1] - H0[0]          # authored x = -world y after ROT
 hz = Pw[:n_body, 2] - H0[2]
 headzone = smooth(-0.15, 0.1, hx)
-below = smooth(0.02, -0.03, hz - lip_z(np.clip(hx, 0, 1.5))) * smooth(-0.05, 0.25, hx) * smooth(0.0, -0.08, hz + 0.18)
+# a hard split where the slab parts the jaws, softening only toward the mouth corner where the skin is whole
+soft = np.interp(hx, [0.1, 0.32], [0.06, 0.004])
+below = smooth(soft, -soft, hz - lip_z(np.clip(hx, 0, 1.5))) * smooth(-0.05, 0.25, hx) * smooth(0.0, -0.08, hz + 0.18)
 jh = names.index("Head"), names.index("Jaw")
 hs = score[:, jh[0]] + score[:, jh[1]]
 score[:, jh[1]] = score[:, jh[1]] * (1 - headzone) + hs * headzone * below
@@ -639,7 +673,7 @@ def death(t):
     fall = env(t, [(0, 0), (0.15, -0.1), (0.7, 1.0), (0.8, 0.96), (1, 1.0)])
     limp = env(t, [(0, 0), (0.5, 0.3), (1, 1)])
     hip_h = K["hip"][0].z
-    o = {"up": -(hip_h - 0.62 * 1.1) * fall, "Pelvis": (0, 0, 1.45 * fall), "Chest": (0.1 * fall, 0, 0),
+    o = {"up": -(hip_h - 1.0) * fall,       # lying on its side, the hip is ~1 m up "Pelvis": (0, 0, 1.45 * fall), "Chest": (0.1 * fall, 0, 0),
          "Neck1": (0.3 * limp, 0.2 * limp, 0), "Neck2": (0.4 * limp, 0.3 * limp, 0), "Head": (0.2 * limp, 0, 0),
          "Jaw": (0.2 + 0.4 * limp, 0, 0)}
     for sd in "LR":
