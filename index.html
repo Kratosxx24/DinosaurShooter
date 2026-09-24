@@ -23,17 +23,31 @@
   .overlay {
     position: fixed; inset: 0; display: grid; place-items: center; text-align: center;
     background: radial-gradient(ellipse at center, rgba(10,16,12,.35), rgba(6,9,7,.88));
-    cursor: pointer; padding-inline: 16px; z-index: 5;
+    padding-inline: 16px; z-index: 5;
   }
   .overlay h1 { font: 400 clamp(46px, 9vw, 108px)/.92 var(--serif); margin: 0; letter-spacing: -.01em; }
   .overlay h1 i { color: var(--moss); }
+  .overlay h2 { font: 400 clamp(36px, 6vw, 52px)/1 var(--serif); margin: 0 0 18px; }
   .overlay p { color: var(--muted); margin: 14px auto 0; max-width: 48ch; }
-  .overlay .go {
-    display: inline-block; margin-top: 28px; padding: 10px 22px; border: 1px solid rgba(236,233,224,.35);
-    letter-spacing: .14em; text-transform: uppercase; font-size: 12px;
+  .card { width: min(440px, 100%); }
+  .menu { display: grid; gap: 10px; width: min(280px, 100%); margin: 30px auto 0; }
+  .menu button {
+    font: 500 12px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--ink); cursor: pointer;
+    background: rgba(8,12,9,.45); border: 1px solid rgba(236,233,224,.28); padding: 12px 22px;
+    transition: border-color .15s, color .15s, background .15s;
   }
-  .keys { margin-top: 24px; font-size: 12px; color: var(--muted); display: flex; gap: 8px 18px; flex-wrap: wrap; justify-content: center; }
-  .keys b { color: var(--ink); font-weight: 500; }
+  .menu button.primary { border-color: rgba(236,233,224,.7); }
+  .menu button:hover:not(:disabled), .menu button:focus-visible { border-color: var(--moss); color: var(--moss); background: rgba(169,194,122,.08); outline: none; }
+  .menu button:disabled { opacity: .5; cursor: default; }
+  .row { display: grid; grid-template-columns: 1fr 150px 44px; align-items: center; gap: 12px; text-align: left;
+    padding: 12px 0; border-bottom: 1px solid rgba(236,233,224,.1); font-size: 12px; letter-spacing: .06em; }
+  .row input[type=range] { accent-color: var(--moss); width: 100%; margin: 0; }
+  .row input[type=checkbox] { accent-color: var(--moss); justify-self: start; width: 16px; height: 16px; margin: 0; }
+  .row output { color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+  .ctl { display: grid; grid-template-columns: auto 1fr; gap: 8px 22px; text-align: left; font-size: 12px; margin: 22px auto 0; width: fit-content; }
+  .ctl dt { color: var(--ink); font-weight: 500; text-align: right; }
+  .ctl dd { margin: 0; color: var(--muted); }
+  @media (max-width: 420px) { .row { grid-template-columns: 1fr 110px 40px; } }
   #over h1 { color: var(--blood); }
   #over .stats { margin-top: 18px; font-size: 13px; color: var(--ink); display: flex; gap: 22px; justify-content: center; }
   #over .stats span { color: var(--muted); }
@@ -86,9 +100,23 @@
     <h1>Mist <i>Hunt</i></h1>
     <p>Something is moving in the fog around the forest house. You'll see their eyes before you see them.
       Hold out as long as you can. The raptors fit through the doors. The big one doesn't.</p>
-    <div class="go" id="go">Loading…</div>
-    <div class="keys"><span><b>WASD</b> move</span><span><b>Shift</b> run</span><span><b>Click</b> shoot</span>
-      <span><b>Right-click</b> aim</span><span><b>R</b> reload</span><span><b>F</b> flashlight</span><span><b>T</b> time of day</span><span><b>Esc</b> pause</span></div>
+    <nav class="menu">
+      <button class="primary" id="bStart" disabled>Loading…</button>
+      <button data-open="settings">Settings</button>
+      <button data-open="howto">How to Play</button>
+    </nav>
+  </div>
+</div>
+<div id="pause" class="overlay" hidden>
+  <div>
+    <h1><i>Paused</i></h1>
+    <nav class="menu">
+      <button class="primary" id="bResume">Resume</button>
+      <button id="bRestart">Restart</button>
+      <button data-open="settings">Settings</button>
+      <button data-open="howto">How to Play</button>
+      <button id="bQuit">Main Menu</button>
+    </nav>
   </div>
 </div>
 <div id="over" class="overlay" hidden>
@@ -96,7 +124,32 @@
     <h1>Taken by the <i>mist</i></h1>
     <div class="stats"><div><span>wave</span> <b id="oWave">1</b></div><div><span>kills</span> <b id="oKills">0</b></div>
       <div><span>score</span> <b id="oScore">0</b></div></div>
-    <div class="go">Click to try again</div>
+    <nav class="menu">
+      <button class="primary" id="bRetry">Try Again</button>
+      <button id="bMenu">Main Menu</button>
+    </nav>
+  </div>
+</div>
+<div id="settings" class="overlay" hidden>
+  <div class="card">
+    <h2>Settings</h2>
+    <label class="row"><span>Look Sensitivity</span><input type="range" id="sSens" min="0.3" max="2.5" step="0.05"><output id="oSens"></output></label>
+    <label class="row"><span>Volume</span><input type="range" id="sVol" min="0" max="1" step="0.05"><output id="oVol"></output></label>
+    <label class="row"><span>Invert Look</span><input type="checkbox" id="sInv"><output></output></label>
+    <nav class="menu"><button class="back">Back</button></nav>
+  </div>
+</div>
+<div id="howto" class="overlay" hidden>
+  <div class="card">
+    <h2>How to Play</h2>
+    <p>Hold out against wave after wave. Raptors fit through the doors; the rex doesn't.
+      Health comes back after a few quiet seconds. Aim for the head.</p>
+    <dl class="ctl">
+      <dt>WASD</dt><dd>Move</dd><dt>Shift</dt><dd>Run</dd><dt>Space</dt><dd>Jump</dd>
+      <dt>Click</dt><dd>Shoot</dd><dt>Right-click</dt><dd>Aim down sights</dd><dt>R</dt><dd>Reload</dd>
+      <dt>F</dt><dd>Flashlight</dd><dt>T</dt><dd>Time of day</dd><dt>Esc</dt><dd>Pause</dd>
+    </dl>
+    <nav class="menu"><button class="back">Back</button></nav>
   </div>
 </div>
 <div id="hud" hidden>
@@ -412,7 +465,7 @@ let NOISE, BROWN;
 function audioInit() {
   if (AC) return;
   AC = new (window.AudioContext || window.webkitAudioContext)();
-  master = AC.createGain(); master.gain.value = 0.8; master.connect(AC.destination);
+  master = AC.createGain(); master.gain.value = settings.vol; master.connect(AC.destination);
   NOISE = noiseBuf(2, false); BROWN = noiseBuf(4, true);
   // a cheap forest reverb: filtered noise impulse
   const conv = AC.createConvolver(), ir = AC.createBuffer(2, AC.sampleRate * 2.2, AC.sampleRate);
@@ -917,7 +970,7 @@ function spawnOne(kind) {
 }
 function gameOver() {
   $('oWave').textContent = game.wave; $('oKills').textContent = game.kills; $('oScore').textContent = game.score;
-  $('over').hidden = false; $('hud').hidden = true;
+  showMenu('over');
   if (document.pointerLockElement) document.exitPointerLock();
   playing = false;
 }
@@ -925,7 +978,7 @@ function restart() {
   for (const z of [...dinos]) z.remove();
   Object.assign(game, { wave: 0, kills: 0, score: 0, toSpawn: [], breakT: 3, shake: 0 });
   spawnPlayer();
-  $('over').hidden = true; $('hud').hidden = false; $('vignette').style.opacity = 0;
+  $('vignette').style.opacity = 0;
 }
 
 // ================================================================ time of day
@@ -961,6 +1014,8 @@ function nextPreset() {
 
 // ================================================================ input
 const keys = {};
+const SETTINGS_KEY = 'misthunt.settings', settings = { sens: 1, vol: 0.8, invert: false };
+try { Object.assign(settings, JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}')); } catch (e) {}
 let playing = false, mouseDown = false, aiming = false, lookMode = 'lock';
 addEventListener('keydown', (e) => {
   keys[e.code] = true;
@@ -977,25 +1032,62 @@ addEventListener('mouseup', (e) => { if (e.button === 0) mouseDown = false; if (
 addEventListener('mousemove', (e) => {
   if (!playing || touch) return;
   if (lookMode === 'lock' && document.pointerLockElement !== document.body) return;
-  look.yaw -= e.movementX * 0.0022; look.pitch = clamp(look.pitch - e.movementY * 0.0022, -1.45, 1.45);
+  const s = 0.0022 * settings.sens;
+  look.yaw -= e.movementX * s; look.pitch = clamp(look.pitch - e.movementY * s * (settings.invert ? -1 : 1), -1.45, 1.45);
 });
 document.addEventListener('pointerlockchange', () => {
   if (document.pointerLockElement === document.body) { begin(); }
   else if (playing && lookMode === 'lock' && player.alive) { pause(); }
 });
 document.addEventListener('pointerlockerror', () => { lookMode = 'free'; document.body.style.cursor = 'none'; begin(); });
-function begin() { audioInit(); AC.resume(); playing = true; $('title').hidden = true; $('hud').hidden = false;
+function begin() { audioInit(); AC.resume(); playing = true; showMenu(null);
   if (!game.started) { game.started = true; } }
-function pause() { playing = false; mouseDown = false; $('title').hidden = false; $('hud').hidden = true; $('go').textContent = 'Click to resume'; }
+function pause() { playing = false; mouseDown = false; aiming = false; showMenu('pause'); }
 function enter() {
   if (touch) { lookMode = 'touch'; begin(); return; }
   try { const p = document.body.requestPointerLock(); if (p && p.catch) p.catch(() => { lookMode = 'free'; begin(); }); }
   catch (e) { lookMode = 'free'; begin(); }
   setTimeout(() => { if (!playing) { lookMode = 'free'; document.body.style.cursor = 'none'; begin(); } }, 500);
 }
-$('title').addEventListener('click', enter);
-$('over').addEventListener('click', () => { restart(); enter(); });
-addEventListener('keydown', (e) => { if (e.code === 'Escape' && lookMode === 'free' && playing) pause(); });
+addEventListener('keydown', (e) => {
+  if (e.code !== 'Escape') return;
+  if (lookMode === 'free' && playing) pause();
+  else if (menu === 'settings' || menu === 'howto') showMenu(menuBack);
+});
+
+// ================================================================ menus
+// one overlay at a time; Settings and How to Play remember which menu opened them
+const MENUS = ['title', 'pause', 'over', 'settings', 'howto'];
+let menu = 'title', menuBack = 'title';
+function showMenu(id) {
+  for (const m of MENUS) $(m).hidden = m !== id;
+  $('hud').hidden = !!id; menu = id;
+}
+function toTitle() { restart(); showMenu('title'); }
+$('bStart').addEventListener('click', enter);
+$('bResume').addEventListener('click', enter);
+$('bRestart').addEventListener('click', () => { restart(); enter(); });
+$('bRetry').addEventListener('click', () => { restart(); enter(); });
+$('bQuit').addEventListener('click', toTitle);
+$('bMenu').addEventListener('click', toTitle);
+document.querySelectorAll('[data-open]').forEach((b) => b.addEventListener('click', () => { menuBack = menu; showMenu(b.dataset.open); }));
+document.querySelectorAll('.back').forEach((b) => b.addEventListener('click', () => showMenu(menuBack)));
+
+// settings persist per browser; storage can be blocked, so every access is guarded
+function saveSettings() { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) {} }
+function bindSetting(id, key, fmt) {
+  const el = $(id), out = el.nextElementSibling, isBox = el.type === 'checkbox';
+  const show = () => { if (fmt) out.textContent = fmt(settings[key]); };
+  if (isBox) el.checked = settings[key]; else el.value = settings[key];
+  show();
+  el.addEventListener('input', () => {
+    settings[key] = isBox ? el.checked : +el.value; show(); saveSettings();
+    if (key === 'vol' && master) master.gain.value = settings.vol;
+  });
+}
+bindSetting('sSens', 'sens', (v) => v.toFixed(2) + '×');
+bindSetting('sVol', 'vol', (v) => Math.round(v * 100) + '%');
+bindSetting('sInv', 'invert');
 
 // touch: left stick walks, right-side drag looks, the red button fires
 const stick = { x: 0, y: 0, id: null, look: null };
@@ -1014,7 +1106,8 @@ if (touch) {
         const l = Math.hypot(dx, dy); if (l > 1) { dx /= l; dy /= l; }
         stick.x = dx; stick.y = dy; knob.style.transform = `translate(${dx * 35}px, ${dy * 35}px)`;
       } else if (stick.look && t.identifier === stick.look.id) {
-        look.yaw -= (t.clientX - stick.look.x) * 0.005; look.pitch = clamp(look.pitch - (t.clientY - stick.look.y) * 0.005, -1.4, 1.4);
+        const s = 0.005 * settings.sens;
+        look.yaw -= (t.clientX - stick.look.x) * s; look.pitch = clamp(look.pitch - (t.clientY - stick.look.y) * s * (settings.invert ? -1 : 1), -1.4, 1.4);
         stick.look.x = t.clientX; stick.look.y = t.clientY;
       }
     }
@@ -1149,7 +1242,7 @@ const clock = new THREE.Clock();
 function tick() { update(Math.min(clock.getDelta(), 0.05)); draw(); requestAnimationFrame(tick); }
 
 spawnPlayer();
-$('go').textContent = touch ? 'Tap to begin' : 'Click to begin';
+$('bStart').textContent = 'Start Game'; $('bStart').disabled = false;
 tick();
 addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
@@ -1159,7 +1252,7 @@ addEventListener('resize', () => {
 // ================================================================ test harness (a hidden tab pauses rAF: step and render by hand)
 window.game = {
   state: game, player, dinos, keys, look, camera,
-  begin() { lookMode = 'free'; playing = true; $('title').hidden = true; $('hud').hidden = false; },
+  begin() { lookMode = 'free'; playing = true; showMenu(null); },
   sim(sec, held = {}) { Object.assign(keys, held); for (let t = 0; t < sec; t += 1 / 60) update(1 / 60); for (const k in held) keys[k] = false;
     return { feet: player.feet.toArray().map((v) => +v.toFixed(2)), hp: +player.hp.toFixed(1), dinos: dinos.map((z) => [z.kind, z.state, +z.hp.toFixed(0),
       +z.pos.distanceTo(player.feet).toFixed(1)]) }; },
