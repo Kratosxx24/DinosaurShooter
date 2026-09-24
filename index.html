@@ -606,6 +606,7 @@ const noiseBuf = (sec, brown) => {
   return b;
 };
 let NOISE, BROWN;
+const MIX = 0.35;                      // overall loudness (~-9 dB) at any slider setting
 const live = new Set();                // every one-shot sound still playing or scheduled, so a restart can cut them
 function audioInit() {
   if (AC) return;
@@ -614,7 +615,10 @@ function audioInit() {
     const orig = AC[make].bind(AC);
     AC[make] = () => { const s = orig(); live.add(s); s.addEventListener('ended', () => live.delete(s)); return s; };
   }
-  master = AC.createGain(); master.gain.value = settings.vol; master.connect(AC.destination);
+  // MIX trims the whole game under the volume slider; the limiter keeps roars and gunshots from spiking
+  const limit = AC.createDynamicsCompressor();
+  limit.threshold.value = -18; limit.knee.value = 6; limit.ratio.value = 8; limit.attack.value = 0.003; limit.release.value = 0.25;
+  master = AC.createGain(); master.gain.value = settings.vol * MIX; master.connect(limit).connect(AC.destination);
   NOISE = noiseBuf(2, false); BROWN = noiseBuf(4, true);
   // a cheap forest reverb: filtered noise impulse
   const conv = AC.createConvolver(), ir = AC.createBuffer(2, AC.sampleRate * 2.2, AC.sampleRate);
@@ -1339,7 +1343,7 @@ function bindSetting(id, key, fmt) {
   show();
   el.addEventListener('input', () => {
     settings[key] = isBox ? el.checked : +el.value; show(); saveSettings();
-    if (key === 'vol' && master) master.gain.value = settings.vol;
+    if (key === 'vol' && master) master.gain.value = settings.vol * MIX;
   });
 }
 bindSetting('sSens', 'sens', (v) => v.toFixed(2) + '×');
