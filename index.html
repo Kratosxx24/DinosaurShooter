@@ -168,7 +168,7 @@
   <div id="wave" class="panel"><b id="hWave">WAVE 1</b><div><span id="hKills">0</span> kills · <span id="hScore">0</span> pts · <span id="hLeft">0</span> in the mist</div></div>
   <div id="help" class="panel">Click shoot · Right-click aim · R reload · F light · T time</div>
   <div id="vitals" class="panel"><div class="lbl"><span>Health</span><span id="hHp">100</span></div><div id="hpbar"><i></i></div></div>
-  <div id="ammo" class="panel"><b id="hAmmo">30</b> <span>/ 30</span><span class="rl" id="hReload" hidden>Reloading</span></div>
+  <div id="ammo" class="panel"><b id="hAmmo">60</b> <span>/ 60</span><span class="rl" id="hReload" hidden>Reloading</span></div>
   <div id="toast"><b></b><span></span></div>
 </div>
 <div id="scope"><div class="glass"></div>
@@ -990,7 +990,7 @@ function rayCapsule(o, d, maxT, a, b, r) {
 const player = {
   feet: new THREE.Vector3(), vel: new THREE.Vector3(), vy: 0, onGround: false, bob: 0,
   hp: 100, alive: true, lastHurt: -99,
-  ammo: 30, reloading: 0, cool: 0, spread: 0, recoil: 0, kick: 0, ads: 0, racked: true,
+  ammo: 60, reloading: 0, cool: 0, spread: 0, recoil: 0, kick: 0, ads: 0, racked: true,
   hurt(n, from) {
     if (!this.alive) return;
     this.hp -= n; this.lastHurt = game.time;
@@ -1009,7 +1009,7 @@ const EYE = 1.65, P_RADIUS = 0.35, STEP = 0.5;
 function spawnPlayer() {
   player.feet.set(meta.spawn[0], 0, meta.spawn[2]);
   player.feet.y = groundAt(player.feet.x, 50, player.feet.z);
-  player.vel.set(0, 0, 0); player.vy = 0; player.hp = 100; player.alive = true; player.ammo = 30; player.reloading = 0;
+  player.vel.set(0, 0, 0); player.vy = 0; player.hp = 100; player.alive = true; player.ammo = MAG; player.reloading = 0;
   camera.position.set(player.feet.x, player.feet.y + EYE, player.feet.z);
   camera.lookAt(meta.look[0], meta.look[1], meta.look[2]);
   look.yaw = camera.rotation.y; look.pitch = camera.rotation.x;
@@ -1032,7 +1032,7 @@ function collideWalls(step) {
 }
 
 // ================================================================ shooting
-const MAG = 30, RPM = 540;
+const MAG = 60, RPM = 540;
 function reload() {
   if (player.reloading > 0 || player.ammo === MAG) return;
   player.reloading = 1.6; player.racked = false; $('hReload').hidden = false;
