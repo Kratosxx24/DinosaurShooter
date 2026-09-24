@@ -1,0 +1,7 @@
+// Static site on Cloudflare Workers (assets only, no Worker script). Deploy: npx wrangler deploy
+// .assetsignore keeps tooling and sources out of the upload; _headers sets caching.
+{
+  "name": "dinosaur-shooter",
+  "compatibility_date": "2026-09-01",
+  "assets": { "directory": "." }
+}

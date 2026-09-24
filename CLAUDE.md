@@ -8,6 +8,11 @@ CDN import map, no build step. Everything lives in `index.html` for now.
 `window.game` is a test harness: `begin()`, `sim(sec, keys)`, `spawn(kind, dist, angDeg)`,
 `aimAt(dino)`, `shoot(n)`, `teleport(x, z, yawDeg)`, `snap(name)` (saves `screenshots/<name>.png`).
 
+## Deploy
+`npx wrangler deploy` publishes the repo root as static assets on Cloudflare Workers
+(https://dinosaur-shooter.codexcanon.workers.dev). `wrangler.jsonc` is the config, `.assetsignore` keeps
+tooling and sources out, and `_headers` caches `assets/*.glb|json` as immutable (so bump versions). Commit first.
+
 ## Assets are generated in `blender/`
 `assets/` is **built** from the Python generators in `blender/` (Blender 5.2, run headless). Don't
 hand-edit GLBs: change the generator, rebuild, check the preview in `screenshots/`, then test in game.

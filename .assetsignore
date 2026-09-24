@@ -8,3 +8,9 @@ CLAUDE.md
 *.py
 *.blend
 *.blend1
+*.md
+wrangler.jsonc
+.wrangler/
+node_modules/
+.gitignore
+.assetsignore
