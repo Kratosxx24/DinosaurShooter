@@ -1,0 +1,10 @@
+# Cloudflare static assets: don't publish source and tooling, only the game
+blender/
+tools/
+screenshots/
+.claude/
+.git/
+CLAUDE.md
+*.py
+*.blend
+*.blend1
