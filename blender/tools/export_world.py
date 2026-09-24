@@ -1,8 +1,8 @@
 """Export the forest-house world for the game (assets/). Builds world/forest_house.py in --game mode in a
 BACKGROUND Blender, then writes:
 
-  world_v1.glb      terrain, house (every box, slats, glass), the boulder, all Y-up
-  plants_v1.glb     one mesh per plant variant (P_Tree0.., P_Palm0.., P_Fern0.., P_Rock0.., P_Boulder),
+  world_v1.glb      terrain, house (every box, slats, glass), the Water sheet over the stream, all Y-up
+  plants_v1.glb     one mesh per plant variant (P_Tree0.., P_Palm0.., P_Fern0.., P_Rock0..),
                     branches + leaves realized into a single object at the origin
   instances_v1.json {variant: [16-float column-major Three.js matrices]} for every scattered plant
 
@@ -113,7 +113,7 @@ print("tris per variant:", tris)
 print("total instanced tris:", sum(tris["P_" + k] * len(v) for k, v in inst.items()))
 export(os.path.join(OUT, f"plants_{VER}.glb"), plant_objs)
 
-# ---------------------------------------------------------------- the world: terrain, house, boulder
+# ---------------------------------------------------------------- the world: terrain, house, water
 skip = {"Mist", "Stream", "Canopy", "MidStorey", "Ferns", "StreamRocks"}
 world = [o for o in bpy.context.view_layer.objects          # excluded plant sources aren't in the view layer
          if o.type == "MESH" and o.name not in skip and exp_col not in o.users_collection]

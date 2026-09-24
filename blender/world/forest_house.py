@@ -1,5 +1,5 @@
-"""Forest house: an Ex Machina-style retreat — concrete slabs, glass curtain walls, timber, a green roof,
-a boulder breaking through the glass — hidden in misty rainforest over a stream. Sun shafts through
+"""Forest house: an Ex Machina-style retreat — concrete slabs, glass curtain walls, timber, a green roof —
+hidden in misty rainforest over a stream. Sun shafts through
 the canopy, warm interior light, swaying leaves, flowing water.
 
     blender -b --factory-startup --python renders/forest_house.py -- out.png [--preview]
@@ -136,6 +136,38 @@ wat = bpy.context.object
 wat.name = "Stream"
 wat.scale = (2 * EXT, 2 * EXT, 3.0)
 assign(wat, water)
+if GAME:
+    # the game's water: a sheet over the channel only (the render's box is skipped by the exporter).
+    # UVMap is metres along the flow (u = x) and across it (v = offset from the centreline), so ripples
+    # follow the bends; the second UV map carries (depth to the bed, 0) for the shader's colour and shore.
+    WSTEP, WHALF = 0.5, 9.0
+    nu, nv = int(2 * EXT / WSTEP) + 1, int(2 * WHALF / WSTEP) + 1
+    wv, wuv, wdep = [], [], []
+    for i in range(nu):
+        x = -EXT + i * WSTEP
+        for j in range(nv):
+            off = -WHALF + j * WSTEP
+            y = stream_y(x) + off
+            wv.append((x, y, WATER_Z))
+            wuv.append((x, off))
+            wdep.append(WATER_Z - ground_z(x, y))
+    wf = []
+    for i in range(nu - 1):
+        for j in range(nv - 1):
+            q = (i * nv + j, (i + 1) * nv + j, (i + 1) * nv + j + 1, i * nv + j + 1)
+            if max(wdep[k] for k in q) > -0.05:        # keep quads that reach the waterline; banks hide the rest
+                wf.append(q)
+    wme = bpy.data.meshes.new("Water")
+    wme.from_pydata(wv, [], wf)
+    uv0, uv1 = wme.uv_layers.new(name="UVMap"), wme.uv_layers.new(name="Depth")
+    for loop in wme.loops:
+        k = loop.vertex_index
+        uv0.data[loop.index].uv = wuv[k]
+        uv1.data[loop.index].uv = (wdep[k], 0.0)
+    wme.validate()
+    for poly in wme.polygons:
+        poly.use_smooth = True
+    assign(link(bpy.data.objects.new("Water", wme)), water)
 
 # ---------------------------------------------------------------- the house
 concrete = fl.mossy_material("M_Concrete", base=(0.36, 0.35, 0.33), moss=(0.08, 0.12, 0.04), moss_from=0.62, scale=1.5)
@@ -216,16 +248,6 @@ wash = light("AREA", (hx, hy + 1.0, CEIL - 0.1), 600, (1.0, 0.7, 0.42), size=1, 
 wash.data.shape = "RECTANGLE"
 wash.data.size, wash.data.size_y = HOUSE_W - 2, HOUSE_D - 3
 light("AREA", (hx, y1 - 0.6, FLOOR + 2.8), 250, (1.0, 0.68, 0.4), size=HOUSE_W * 0.8, target=(hx, y1 - 0.1, FLOOR + 1.5), name="SlatGrazer")
-
-# the boulder that the house was built around: through the glass at the front-west corner
-boulder = fl.rock("Boulder", seed=77, size=2.6, mat=fl.mossy_material("M_Boulder", base=(0.2, 0.2, 0.19),
-                                                                     moss=(0.05, 0.13, 0.02), moss_from=0.1, scale=1.2), squash=0.75)
-bo = bpy.data.objects.new("BoulderInst", None)
-bo.instance_type = "COLLECTION"
-bo.instance_collection = boulder
-bo.location = (x0 + 3.2, y0 + 0.3, FLOOR + 0.4)
-bo.rotation_euler = (0.1, 0.05, 0.7)
-link(bo)
 
 # ---------------------------------------------------------------- rainforest
 leaf_big = fl.leaf_mesh("LeafBig", length=0.62, width=0.26, fold=0.3)

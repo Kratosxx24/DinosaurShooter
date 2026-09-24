@@ -28,7 +28,7 @@ Cloudflare cache by URL. `BLENDER` env var overrides the blender.exe path.
 |---|---|
 | `raptor_v1.glb`, `rex_v1.glb` | `blender/generators/dino.py` (KIND=raptor / rex): skin-modifier body, 22-bone FK rig, clips Idle/Run/Attack/Roar/Death, `knots` extras for hitboxes |
 | `rifle_v2.glb` | `blender/generators/rifle.py`: scoped carbine, nodes Rifle_Body/Mag/Bolt + empties Rifle_Muzzle/Rifle_Sight (scope eye point); loaded via `RIFLE_V` |
-| `world_v1.glb`, `plants_v1.glb`, `instances_v1.json` | `blender/tools/export_world.py` (builds `blender/world/forest_house.py --game`; plants from `world/_flora.py`) |
+| `world_v2.glb`, `plants_v2.glb`, `instances_v2.json` | `blender/tools/export_world.py` (builds `blender/world/forest_house.py --game`; plants from `world/_flora.py`); loaded via `WORLD_V`. The `Water` sheet covers the channel only: UVMap = metres along/across the flow, 2nd UV set x = depth to the bed, read by the water shader in index.html |
 | `tex/*.jpg` | Poly Haven CC0: forest_leaves_02, bark_brown_02, mossy_rock, concrete_wall_003, wood_floor_deck |
 
 Generator conventions: parameters as constants at the top, seeded randomness, each builds into its own

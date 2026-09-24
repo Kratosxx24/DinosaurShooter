@@ -207,7 +207,7 @@ THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
 
 const $ = (id) => document.getElementById(id);
-const V = 'v1', RIFLE_V = 'v2';   // bump per file when an asset is rebuilt
+const V = 'v1', RIFLE_V = 'v2', WORLD_V = 'v2';   // bump per file when an asset is rebuilt
 const touch = matchMedia('(pointer: coarse)').matches;
 const rand = (a, b) => a + Math.random() * (b - a);
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
@@ -346,7 +346,7 @@ const MATS = {
   M_Canopy: leafMat(0x46702a), M_Canopy2: leafMat(0x62802d), M_Understory: leafMat(0x2f5c1f),
   rock: pbr('rock', { color: 0xc0c0b4 }),
 };
-const matFor = (m) => MATS[m.name] || (/^M_(Rock|Boulder)/.test(m.name) ? MATS.rock : std({ color: 0x777777, roughness: 0.8 }));
+const matFor = (m) => MATS[m.name] || (/^M_Rock/.test(m.name) ? MATS.rock : std({ color: 0x777777, roughness: 0.8 }));
 const UV_SCALE = { M_ForestFloor: 3, M_GreenRoof: 3, M_Concrete: 2.5, M_Timber: 1.5, M_FloorWood: 2 };
 
 // ================================================================ collision soups
@@ -377,15 +377,17 @@ async function load(url) {
     if (total) { progress[key] = Math.round(got / total * 100); setLoad(); } }
   return loader.parseAsync(await new Blob(parts).arrayBuffer(), '');
 }
-const [world, plants, meta, raptorG, rexG, rifleG] = await Promise.all([load(`world_${V}.glb`), load(`plants_${V}.glb`),
-  fetch(`assets/instances_${V}.json`).then((r) => r.json()), load(`raptor_${V}.glb`), load(`rex_${V}.glb`), load(`rifle_${RIFLE_V}.glb`)]);
+const [world, plants, meta, raptorG, rexG, rifleG] = await Promise.all([load(`world_${WORLD_V}.glb`), load(`plants_${WORLD_V}.glb`),
+  fetch(`assets/instances_${WORLD_V}.json`).then((r) => r.json()), load(`raptor_${V}.glb`), load(`rex_${V}.glb`), load(`rifle_${RIFLE_V}.glb`)]);
 $('load').textContent = '';
 
 const NOT_GROUND = /^(RoofGarden|Roof|Sphere|Slat|Mullion|Transom|Glass|RailGlass|Sofa|Table)/;
 const NOT_WALL = /^(FloorFinish|DeckTop|RoofGarden|Sphere|Terrain)/;
 world.scene.updateMatrixWorld(true);
+const waterMeshes = [];
 world.scene.traverse((o) => {
   if (!o.isMesh) return;
+  if (o.name.startsWith('Water')) { waterMeshes.push(o); return; }   // shaded below; no collision
   const src = Array.isArray(o.material) ? o.material[0] : o.material;
   const mapped = matFor(src);
   o.material = mapped;
@@ -411,13 +413,50 @@ for (let i = 0; i < 4; i++) {
   for (const L of [groundTris, wallTris, shotTris]) addTris(L, g, s.matrixWorld);
 }
 
-const water = new THREE.Mesh(new THREE.PlaneGeometry(160, 160), new THREE.MeshStandardMaterial({
-  color: 0x1a2620, roughness: 0.12, metalness: 0.1, transparent: true, opacity: 0.93, normalMap: water_normal,
-  normalScale: new THREE.Vector2(0.25, 0.25), envMapIntensity: 1.2 }));
-water.rotation.x = -Math.PI / 2;
-water.position.y = meta.water_y;
-water.receiveShadow = true;
-scene.add(water);
+// the stream: the generator's Water sheet covers just the channel. UVMap is metres along the flow and across
+// it, the second UV set holds the depth to the bed. Colour and opacity follow depth (the bed shows through the
+// shallows, pools go dark), ripples drift downstream with a two-phase flow so they never smear, and a soft
+// lapping band rings the waterline.
+const waterU = { uRip: { value: water_normal }, uTime: wind,
+  uShallow: { value: new THREE.Color(0x56603c) }, uDeep: { value: new THREE.Color(0x0c1a16) }, uFoam: { value: new THREE.Color(0xb8c2b4) } };
+const waterMat = new THREE.MeshStandardMaterial({ roughness: 0.06, metalness: 0, transparent: true, envMapIntensity: 1.3 });
+waterMat.onBeforeCompile = (sh) => {
+  Object.assign(sh.uniforms, waterU);
+  sh.vertexShader = 'attribute vec2 aFlow; attribute float aDepth; varying vec2 vFlow; varying float vDepth;\n' +
+    sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n vFlow = aFlow; vDepth = aDepth;');
+  sh.fragmentShader = `uniform sampler2D uRip; uniform float uTime; uniform vec3 uShallow, uDeep, uFoam;
+    varying vec2 vFlow; varying float vDepth;
+    vec3 wN; float wFoam;
+    vec2 ripAt(vec2 p) { return texture2D(uRip, p).xy * 2. - 1.; }
+    ` + sh.fragmentShader
+    .replace('#include <color_fragment>', `#include <color_fragment>
+      float d = max(vDepth, 0.);
+      float speed = mix(0.25, 0.9, smoothstep(0.0, 0.8, d));          // slack at the banks, quick mid-channel
+      vec2 n = vec2(0.);
+      for (int k = 0; k < 2; k++) {                                     // two flow phases, cross-faded
+        float ph = fract(uTime * 0.12 + float(k) * 0.5), wgt = 1. - abs(2. * ph - 1.);
+        vec2 f = vFlow + vec2(ph * speed * 8.3, 0.);                      // the stream runs toward -x: shift samples +u
+        n += wgt * (ripAt(f * vec2(0.075, 0.2) + float(k) * 0.37) * 0.8 + ripAt(f * 0.23 + vec2(0.61, 0.13) * float(k)) * 0.45);
+      }
+      n += ripAt(vFlow * 0.9 + vec2(uTime * 0.05, -uTime * 0.03)) * 0.12; // fine wind chop, not tied to the flow
+      wN = normalize(vec3(n.x * 0.3, 1., -n.y * 0.3));
+      float lap = 0.5 + 0.5 * sin(d * 70. - uTime * 1.8 + n.x * 2.5);
+      wFoam = (1. - smoothstep(0.015, 0.14, d)) * smoothstep(0.35, 0.9, lap) * 0.55 + (1. - smoothstep(0.0, 0.03, d)) * 0.25;
+      diffuseColor.rgb = mix(mix(uShallow, uDeep, 1. - exp(-d * 2.4)), uFoam, wFoam);
+      diffuseColor.a = mix(mix(0.3, 0.95, smoothstep(0.0, 0.8, d)), 0.85, wFoam) * smoothstep(-0.03, 0.03, vDepth);`)
+    .replace('#include <normal_fragment_maps>', 'normal = normalize((viewMatrix * vec4(wN, 0.)).xyz);')
+    .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n roughnessFactor = mix(roughnessFactor, 0.7, wFoam);');
+};
+waterMat.customProgramCacheKey = () => 'water';
+for (const o of waterMeshes) {
+  const g = o.geometry, uv1 = g.attributes.uv1;
+  g.setAttribute('aFlow', g.attributes.uv);
+  const dep = new Float32Array(uv1.count);
+  for (let i = 0; i < uv1.count; i++) dep[i] = uv1.getX(i);
+  g.setAttribute('aDepth', new THREE.BufferAttribute(dep, 1));
+  o.material = waterMat;
+  o.receiveShadow = true; o.castShadow = false;
+}
 
 // instanced plants
 const trunks = [];
@@ -429,10 +468,10 @@ for (const [variant, list] of Object.entries(meta.instances)) {
   const root = plants.scene.getObjectByName('P_' + variant);
   if (!root) continue;
   const kind = variant.replace(/\d+$/, '');
-  const solid = kind === 'Rock' || kind === 'Boulder';
+  const solid = kind === 'Rock';
   root.traverse((o) => {
     if (!o.isMesh) return;
-    planarUV(o.geometry, kind === 'Boulder' ? 2 : 1.5);
+    planarUV(o.geometry, 1.5);
     const im = new THREE.InstancedMesh(o.geometry, matFor(o.material), list.length);
     for (let i = 0; i < list.length; i++) {
       m4.fromArray(list[i]).multiply(o.matrixWorld);
@@ -1146,7 +1185,6 @@ const fwdV = new THREE.Vector3(), rightV = new THREE.Vector3(), wish = new THREE
 function update(dt) {
   game.time += dt;
   wind.value += dt;
-  water_normal.offset.x -= dt * 0.03;
   if (pBlend < 1) { pBlend = Math.min(1, pBlend + dt / 2.5); applyPreset(pBlend * pBlend * (3 - 2 * pBlend)); }
   flashlight.intensity += ((flashOn ? 38 : 0) - flashlight.intensity) * (1 - Math.exp(-dt * 12));
 
