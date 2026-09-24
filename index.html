@@ -606,9 +606,14 @@ const noiseBuf = (sec, brown) => {
   return b;
 };
 let NOISE, BROWN;
+const live = new Set();                // every one-shot sound still playing or scheduled, so a restart can cut them
 function audioInit() {
   if (AC) return;
   AC = new (window.AudioContext || window.webkitAudioContext)();
+  for (const make of ['createBufferSource', 'createOscillator']) {
+    const orig = AC[make].bind(AC);
+    AC[make] = () => { const s = orig(); live.add(s); s.addEventListener('ended', () => live.delete(s)); return s; };
+  }
   master = AC.createGain(); master.gain.value = settings.vol; master.connect(AC.destination);
   NOISE = noiseBuf(2, false); BROWN = noiseBuf(4, true);
   // a cheap forest reverb: filtered noise impulse
@@ -627,6 +632,13 @@ function audioInit() {
   sfxDecode();
 }
 let streamGain = null;
+// stop every one-shot (roars, growls, bites, scheduled clicks); the ambience loops keep playing
+function hush() {
+  for (const s of live) if (!s.loop) { try { s.stop(); } catch (e) {} live.delete(s); }
+}
+// solo menus freeze the sound with the world; co-op keeps running (the hunt doesn't pause)
+// (always call: suspend/resume queue in order, while reading AC.state races a resume that hasn't landed yet)
+function audioPause() { if (AC && !net.role) AC.suspend(); }
 // recorded loops replace the synthesized wind and stream once they decode
 function ambience() {
   const loop = (slot, to, synth) => {
@@ -1083,6 +1095,9 @@ function spawnPlayer() {
   player.feet.set(meta.spawn[0] + (net.role === 'guest' ? 1.4 : 0), 0, meta.spawn[2]);   // the guest starts beside the host
   player.feet.y = groundAt(player.feet.x, 50, player.feet.z);
   player.vel.set(0, 0, 0); player.vy = 0; player.hp = 100; player.alive = true; player.downed = false; player.ammo = MAG; player.reloading = 0;
+  Object.assign(player, { cool: 0, recoil: 0, kick: 0, spread: 0, ads: 0, lastHurt: -99 });
+  $('hReload').hidden = true;          // dying mid-reload used to leave the label up for the next run
+  mouseDown = false; aiming = false;
   camera.position.set(player.feet.x, player.feet.y + EYE, player.feet.z);
   camera.lookAt(meta.look[0], meta.look[1], meta.look[2]);
   look.yaw = camera.rotation.y; look.pitch = camera.rotation.x;
@@ -1200,8 +1215,11 @@ function gameOver() {
   playing = false; game.over = true;
 }
 function restart() {
+  hush();
   for (const z of [...dinos]) z.remove();
-  Object.assign(game, { wave: 0, kills: 0, score: 0, toSpawn: [], breakT: 3, shake: 0, over: false });
+  Object.assign(game, { wave: 0, kills: 0, score: 0, toSpawn: [], spawnT: 0, breakT: 3, shake: 0, hitT: 0, arrowT: 0, beatT: 0,
+    clearShown: false, over: false });
+  $('hit').style.opacity = 0; $('arrow').style.opacity = 0;
   spawnPlayer();
   $('vignette').style.opacity = 0;
 }
@@ -1251,6 +1269,13 @@ addEventListener('keydown', (e) => {
   if (e.code === 'Space' && player.onGround && player.alive) { player.vy = 5.4; player.onGround = false; }
 });
 addEventListener('keyup', (e) => { keys[e.code] = false; });
+// leaving the window loses the keyup/mouseup: drop everything held, and pause a solo free-look game
+function releaseAll() { for (const k in keys) keys[k] = false; mouseDown = false; aiming = false; }
+addEventListener('blur', () => { releaseAll(); if (playing && lookMode === 'free' && !net.role) pause(); });
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) return;
+  releaseAll(); if (playing && (player.alive || player.downed)) pause();
+});
 addEventListener('mousedown', (e) => { if (e.button === 0 && playing) mouseDown = true; if (e.button === 2 && playing) aiming = true; });
 addEventListener('contextmenu', (e) => e.preventDefault());
 addEventListener('mouseup', (e) => { if (e.button === 0) mouseDown = false; if (e.button === 2) aiming = false; });
@@ -1270,7 +1295,7 @@ function begin() { audioInit(); AC.resume(); playing = true; showMenu(null);
 function pause() {
   playing = false; mouseDown = false; aiming = false;
   $('pNote').hidden = !net.conn; $('bRestart').hidden = net.role === 'guest';
-  showMenu('pause');
+  showMenu('pause'); audioPause();
 }
 function enter() {
   if (touch) { lookMode = 'touch'; begin(); return; }
@@ -1293,7 +1318,7 @@ function showMenu(id) {
   for (const m of MENUS) $(m).hidden = m !== id;
   $('hud').hidden = !!id; menu = id;
 }
-function toTitle() { leave(); restart(); game.started = false; showMenu('title'); }
+function toTitle() { leave(); restart(); game.started = false; showMenu('title'); audioPause(); }
 // the host restarts for both of you; the guest has already been reset by the host's message
 function again() { if (net.role !== 'guest') { restart(); send({ t: 'restart' }); } enter(); }
 $('bStart').addEventListener('click', enter);
@@ -1713,7 +1738,7 @@ function update(dt) {
       streamGain.gain.value = clamp(1 - sd / 18, 0, 1);
     }
     game.beatT -= dt;
-    if (player.alive && player.hp < 40 && game.beatT < 0) { sBeat(); game.beatT = 0.55 + player.hp / 80; }
+    if (playing && player.alive && player.hp < 40 && game.beatT < 0) { sBeat(); game.beatT = 0.55 + player.hp / 80; }
   }
   // --- HUD
   if (game.hitT > 0) { game.hitT -= dt; if (game.hitT <= 0) $('hit').style.opacity = 0; }
@@ -1765,6 +1790,7 @@ window.game = {
   reload() { reload(); },
   hear(slot, dist = 0) { audioInit(); AC.resume(); const p = dist ? camera.position.clone().add(new THREE.Vector3(0, 0, -dist).applyQuaternion(camera.quaternion)) : null;
     return sample(slot, p) ? 'sample' : 'no sample (synth fallback where there is one)'; },
+  audio() { return { state: AC ? AC.state : 'none', oneShots: [...live].filter((x) => !x.loop).length, loops: [...live].filter((x) => x.loop).length, menu }; },
   sfx() { return Object.fromEntries(Object.keys(SLOTS).map((k) => [k, BANK[k] ? BANK[k].map((L) => L.bufs.length).join('+') : 0])); },
   async snap(name) { renderer.setSize(1280, 720, false); composer.setSize(1280, 720); camera.aspect = 16 / 9; camera.updateProjectionMatrix();
     composer.render(); const b = await new Promise((r) => renderer.domElement.toBlob(r));
