@@ -1,7 +1,7 @@
 # Sound effects
 
 Everything here is **built** by `tools/sfx_build.py` from CC0 Freesound previews: it downloads the sources, cuts
-the takes, bakes in pitch, normalizes, fades, encodes mp3 and writes `sfx_v1.json` and the credits below. To change
+the takes, bakes in pitch, normalizes, fades, encodes mp3 and writes `sfx_v2.json` and the credits below. To change
 a sound, edit its line in `RECIPE` there and rerun (setup is in the script's docstring). `tools/sound_shortlist.html`
 (served at /tools/sound_shortlist.html locally) is the audition page of all the candidates that were considered.
 A slot with no files falls back to the synthesized sound in `index.html`.

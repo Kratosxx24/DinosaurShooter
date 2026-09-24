@@ -515,7 +515,7 @@ const insideHouse = (p) => Math.abs(p.x - 8) < 9 && Math.abs(p.z + 10.5) < 4.5 &
 // ================================================================ audio: recorded samples from assets/sfx/, synth fallback
 // The manifest maps a slot ('rex.roar') to layers played together; each layer picks one of its files at random.
 // A slot with no files falls back to the synthesized sound below it. See assets/sfx/README.md.
-const SFX_V = 'v1';
+const SFX_V = 'v2';
 const SLOTS = {                        // per-slot defaults: gain, pitch jitter, reverb send when played at the ear
   'rifle.shot': { gain: 1, jit: 0.04, wet: 0.5 }, 'rifle.mech': { gain: 0.3, jit: 0.05 }, 'rifle.tail': { gain: 0.7, jit: 0.05, wet: 0.3 },
   'rifle.dry': { gain: 0.6 }, 'rifle.magout': { gain: 0.6 }, 'rifle.magin': { gain: 0.7 }, 'rifle.bolt': { gain: 0.7 },

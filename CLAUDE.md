@@ -32,7 +32,7 @@ Cloudflare cache by URL. `BLENDER` env var overrides the blender.exe path.
 | `tex/*.jpg` | Poly Haven CC0: forest_leaves_02, bark_brown_02, mossy_rock, concrete_wall_003, wood_floor_deck |
 
 ## Sound
-Recorded samples in `assets/sfx/`, built by `tools/sfx_build.py` (cuts of CC0 Freesound previews, one `RECIPE` line each), listed per slot (`rex.roar`, `rifle.shot`, ...) in `assets/sfx/sfx_v1.json`
+Recorded samples in `assets/sfx/`, built by `tools/sfx_build.py` (cuts of CC0 Freesound previews, one `RECIPE` line each), listed per slot (`rex.roar`, `rifle.shot`, ...) in `assets/sfx/sfx_v2.json`
 (loaded via `SFX_V`; slot defaults in `SLOTS` in index.html). Slots can layer several files with pitch ranges.
 An empty slot falls back to the synthesized sound. `game.hear(slot, dist)` auditions one, `game.sfx()` lists what
 loaded. Format, slot table, sources and the credits table: `assets/sfx/README.md`. Never overwrite a sound file

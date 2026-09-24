@@ -12,7 +12,7 @@ import numpy as np, miniaudio, lameenc
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC, OUT = os.path.join(ROOT, 'tools', 'sfx_src'), os.path.join(ROOT, 'assets', 'sfx')
-SFX_V = 'v1'
+SFX_V = 'v2'
 SR = 44100
 
 # id: (author, title, preview user id)
