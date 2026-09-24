@@ -207,7 +207,7 @@ THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
 
 const $ = (id) => document.getElementById(id);
-const V = 'v1', RIFLE_V = 'v2', WORLD_V = 'v2';   // bump per file when an asset is rebuilt
+const V = 'v1', RIFLE_V = 'v2', WORLD_V = 'v2', REX_V = 'v2';   // bump per file when an asset is rebuilt
 const touch = matchMedia('(pointer: coarse)').matches;
 const rand = (a, b) => a + Math.random() * (b - a);
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
@@ -378,7 +378,7 @@ async function load(url) {
   return loader.parseAsync(await new Blob(parts).arrayBuffer(), '');
 }
 const [world, plants, meta, raptorG, rexG, rifleG] = await Promise.all([load(`world_${WORLD_V}.glb`), load(`plants_${WORLD_V}.glb`),
-  fetch(`assets/instances_${WORLD_V}.json`).then((r) => r.json()), load(`raptor_${V}.glb`), load(`rex_${V}.glb`), load(`rifle_${RIFLE_V}.glb`)]);
+  fetch(`assets/instances_${WORLD_V}.json`).then((r) => r.json()), load(`raptor_${V}.glb`), load(`rex_${REX_V}.glb`), load(`rifle_${RIFLE_V}.glb`)]);
 $('load').textContent = '';
 
 const NOT_GROUND = /^(RoofGarden|Roof|Sphere|Slat|Mullion|Transom|Glass|RailGlass|Sofa|Table)/;
